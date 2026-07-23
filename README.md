@@ -8,7 +8,7 @@ Compose in Obsidian. Publish through n8n.
 [![Platform](https://img.shields.io/badge/platform-Obsidian-7c3aed)](https://obsidian.md/)
 [![Automation](https://img.shields.io/badge/automation-n8n-ea4b71)](https://n8n.io/)
 [![Bluesky](https://img.shields.io/badge/publishing-Bluesky-1185fe)](https://bsky.app/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](#licence)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Vibe Coded](https://img.shields.io/badge/vibe%20coded-disclosure-ff69b4)](https://github.com/danielrosehill/Vibe-Coded-Disclosure)
 
 
@@ -16,7 +16,8 @@ Compose in Obsidian. Publish through n8n.
 [Setup](#connect-obsidian-to-n8n) ·
 [n8n workflow](n8n/README.md) ·
 [Development builds](docs/installing-development-builds.md) ·
-[Security](SECURITY.md)
+[Security](SECURITY.md) ·
+[License](LICENSE)
 
 </div>
 
@@ -29,10 +30,10 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - [Planned platforms](#planned-platforms)
 - [Architecture](#architecture)
 - [Current status](#current-status)
+- [Basic setup](#basic-setup)
+- [Social Media Credentials](#social-media-credentials)
 - [Bluesky credentials](#bluesky-credentials)
 - [Connect Obsidian to n8n](#connect-obsidian-to-n8n)
-- [Security](#security)
-- [Licence](#licence)
 
 ## Planned platforms
 
@@ -40,7 +41,35 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - LinkedIn personal profiles and organisation pages
 - X/Twitter
 
+<a id="current-status"></a>
+<details>
+<summary>Current status</summary>
+
+The sidebar includes a composer where you can paste post text directly and
+publish. Platform enablement lives in plugin settings, and character counts live
+in the sidebar.
+
+Text-only Bluesky publishing is available from the plugin today. The recommended
+n8n setup uses a Social Deck router workflow that calls a Bluesky publisher
+sub-workflow. The Bluesky sub-workflow publishes text posts and creates URL link
+facets.
+
+X and LinkedIn plugin publishing, images, link preview cards and threads
+are not implemented yet.
+
+</details>
+
 ## Architecture
+
+<details>
+<summary>Requirements</summary>
+
+1. Obsidian
+2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
+
+Social Deck provides an Obsidian sidebar composer for text posts. The plugin
+sends approved posts to an authenticated n8n webhook. n8n stores platform
+credentials and handles scheduling, retries and publishing.
 
 ```mermaid
 flowchart LR
@@ -63,29 +92,31 @@ flowchart LR
     H -.->|"future"| F
 ```
 
-### Requirements
-1. Obsidian
-2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
+</details>
 
-Social Deck provides an Obsidian sidebar composer for text posts. The plugin
-sends approved posts to an authenticated n8n webhook. n8n stores platform
-credentials and handles scheduling, retries and publishing.
+## Basic setup
 
-## Current status
+<details>
+<summary>Obsidian</summary>
 
-The sidebar includes a composer where you can paste post text directly and
-publish. Platform enablement lives in plugin settings, and character counts live
-in the sidebar.
+1. Download the latest release.
+2. Unzip
+3. In your vault folder, add the files to `\.obsidian\plugins\social-deck`
 
-Text-only Bluesky publishing is available from the plugin today. The recommended
-n8n setup uses a Social Deck router workflow that calls a Bluesky publisher
-sub-workflow. The Bluesky sub-workflow publishes text posts and creates URL link
-facets.
+</details>
 
-X and LinkedIn plugin publishing, images, link preview cards and threads
-are not implemented yet.
+<details>
+<summary>n8n</summary>
 
-## Bluesky credentials
+1. 
+
+</details>
+
+## Social Media Credentials
+
+<a id="bluesky-credentials"></a>
+<details>
+<summary>Bluesky credentials</summary>
 
 The text-posting workflow does not require a Bluesky developer account, API key or client secret. It uses:
 
@@ -94,7 +125,10 @@ The text-posting workflow does not require a Bluesky developer account, API key 
 
 Do not use your primary Bluesky account password.
 
-### Create an app password
+</details>
+
+<details>
+<summary>Create an app password</summary>
 
 1. Sign in to [Bluesky](https://bsky.app/) in a web browser.
 2. Open the direct [App Passwords](https://bsky.app/settings/app-passwords) page.
@@ -107,7 +141,10 @@ Do not use your primary Bluesky account password.
 
 If the password is lost or exposed, delete it from the same App Passwords page and create a replacement. Revoking this password does not change the primary account password.
 
-### Add the credentials to n8n
+</details>
+
+<details>
+<summary>Add the credentials to n8n</summary>
 
 Import [`n8n/workflows/bluesky-publisher-subworkflow.json`](n8n/workflows/bluesky-publisher-subworkflow.json)
 and [`n8n/workflows/social-deck-router.json`](n8n/workflows/social-deck-router.json).
@@ -130,6 +167,8 @@ repository.
 Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
 
 The current self-hosted workflow uses an app password for a single account. 
+
+</details>
 
 ## Connect Obsidian to n8n
 
