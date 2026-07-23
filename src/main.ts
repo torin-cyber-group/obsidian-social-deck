@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin, setIcon, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, SocialDeckSettingTab, type SocialDeckSettings } from "./settings";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
 
@@ -8,7 +8,7 @@ export default class SocialDeckPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    this.registerView(SOCIAL_DECK_VIEW_TYPE, (leaf) => new SocialDeckView(leaf));
+    this.registerView(SOCIAL_DECK_VIEW_TYPE, (leaf) => new SocialDeckView(leaf, this));
     this.addRibbonIcon("send", "Open Social Deck", () => this.activateView());
     this.addCommand({
       id: "open-social-deck",
@@ -16,6 +16,19 @@ export default class SocialDeckPlugin extends Plugin {
       callback: () => this.activateView()
     });
     this.addSettingTab(new SocialDeckSettingTab(this.app, this));
+
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        void this.refreshViews();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (file instanceof TFile && file === this.app.workspace.getActiveFile()) {
+          void this.refreshViews();
+        }
+      })
+    );
   }
 
   onunload(): void {
@@ -30,6 +43,10 @@ export default class SocialDeckPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
+  setIcon(element: HTMLElement, icon: string): void {
+    setIcon(element, icon);
+  }
+
   private async activateView(): Promise<void> {
     const existing = this.app.workspace.getLeavesOfType(SOCIAL_DECK_VIEW_TYPE)[0];
     let leaf: WorkspaceLeaf;
@@ -42,6 +59,14 @@ export default class SocialDeckPlugin extends Plugin {
     }
 
     await this.app.workspace.revealLeaf(leaf);
+    await this.refreshViews();
+  }
+
+  private async refreshViews(): Promise<void> {
+    const views = this.app.workspace
+      .getLeavesOfType(SOCIAL_DECK_VIEW_TYPE)
+      .map((leaf) => leaf.view)
+      .filter((view): view is SocialDeckView => view instanceof SocialDeckView);
+    await Promise.all(views.map((view) => view.refresh()));
   }
 }
-

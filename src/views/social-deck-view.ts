@@ -1,10 +1,17 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import { PLATFORM_DEFINITIONS } from "../platforms/definitions";
+import { parseSocialNote } from "../services/note-parser";
+import type SocialDeckPlugin from "../main";
+import type { ParsedSocialNote } from "../services/note-parser";
+import type { SocialPlatform } from "../types/social";
 
 export const SOCIAL_DECK_VIEW_TYPE = "social-deck-view";
 
 export class SocialDeckView extends ItemView {
-  constructor(leaf: WorkspaceLeaf) {
+  private activeFile: TFile | null = null;
+  private drafts: Partial<Record<SocialPlatform, string>> = {};
+
+  constructor(leaf: WorkspaceLeaf, private readonly plugin: SocialDeckPlugin) {
     super(leaf);
   }
 
@@ -21,6 +28,34 @@ export class SocialDeckView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    await this.refresh();
+  }
+
+  async refresh(): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (!(file instanceof TFile) || file.extension !== "md") {
+      this.activeFile = null;
+      this.drafts = {};
+      this.renderEmptyState();
+      return;
+    }
+
+    const changedFile = this.activeFile?.path !== file.path;
+    this.activeFile = file;
+    const raw = await this.app.vault.cachedRead(file);
+    const cache = this.app.metadataCache.getFileCache(file);
+    const note = parseSocialNote(raw, cache?.frontmatter);
+
+    if (changedFile) {
+      this.drafts = Object.fromEntries(
+        note.metadata.platforms.map((platform) => [platform, note.content])
+      ) as Partial<Record<SocialPlatform, string>>;
+    }
+
+    this.renderNote(file, note);
+  }
+
+  private renderEmptyState(): void {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("social-deck");
@@ -31,18 +66,98 @@ export class SocialDeckView extends ItemView {
       text: "Open a social post note to preview and prepare it for publishing."
     });
 
-    const platformList = container.createDiv({ cls: "social-deck__platforms" });
-    for (const platform of Object.values(PLATFORM_DEFINITIONS)) {
-      const card = platformList.createDiv({ cls: "social-deck__platform-card" });
-      card.createEl("strong", { text: platform.name });
-      card.createEl("span", { text: `${platform.characterLimit.toLocaleString()} characters` });
-    }
-
     const emptyState = container.createDiv({ cls: "social-deck__empty" });
-    emptyState.createEl("p", { text: "No social post selected." });
+    emptyState.createEl("p", { text: "No Markdown note selected." });
     emptyState.createEl("small", {
-      text: "Composer and note parsing arrive in the next checkpoint."
+      text: "Open a note containing a social post to begin."
     });
   }
-}
 
+  private renderNote(file: TFile, note: ParsedSocialNote): void {
+    const container = this.containerEl.children[1];
+    container.empty();
+    container.addClass("social-deck");
+
+    const header = container.createDiv({ cls: "social-deck__header" });
+    const heading = header.createDiv();
+    heading.createEl("h2", { text: "Social Deck" });
+    heading.createEl("small", { text: file.basename, title: file.path });
+    const refreshButton = header.createEl("button", {
+      cls: "clickable-icon social-deck__refresh",
+      attr: { "aria-label": "Reload active note" }
+    });
+    this.plugin.setIcon(refreshButton, "refresh-cw");
+    refreshButton.addEventListener("click", () => {
+      this.drafts = {};
+      void this.refresh();
+    });
+
+    const summary = container.createDiv({ cls: "social-deck__summary" });
+    summary.createEl("span", {
+      cls: `social-deck__status social-deck__status--${note.metadata.status}`,
+      text: note.metadata.status
+    });
+    summary.createEl("span", {
+      text: `${note.metadata.platforms.length} platform${note.metadata.platforms.length === 1 ? "" : "s"}`
+    });
+    if (note.metadata.media.length > 0) {
+      summary.createEl("span", {
+        text: `${note.metadata.media.length} media attachment${note.metadata.media.length === 1 ? "" : "s"}`
+      });
+    }
+
+    if (!note.content) {
+      const emptyState = container.createDiv({ cls: "social-deck__empty" });
+      emptyState.createEl("p", { text: "This note has no post content." });
+      return;
+    }
+
+    const platformList = container.createDiv({ cls: "social-deck__platforms" });
+    for (const platformId of note.metadata.platforms) {
+      const definition = PLATFORM_DEFINITIONS[platformId];
+      const account = note.metadata.accounts[platformId] ?? this.plugin.settings.accountLabel;
+      const card = platformList.createDiv({ cls: "social-deck__platform-card" });
+      const cardHeader = card.createDiv({ cls: "social-deck__platform-header" });
+      const identity = cardHeader.createDiv();
+      identity.createEl("strong", { text: definition.name });
+      identity.createEl("small", { text: account });
+      const count = cardHeader.createEl("span", { cls: "social-deck__character-count" });
+
+      const textarea = card.createEl("textarea", {
+        cls: "social-deck__editor",
+        attr: {
+          "aria-label": `${definition.name} post preview`,
+          rows: "8",
+          spellcheck: "true"
+        }
+      });
+      textarea.value = this.drafts[platformId] ?? note.content;
+
+      const updateCount = (): void => {
+        const length = [...textarea.value].length;
+        const overLimit = length > definition.characterLimit;
+        count.textContent = `${length.toLocaleString()} / ${definition.characterLimit.toLocaleString()}`;
+        count.toggleClass("social-deck__character-count--over", overLimit);
+        textarea.toggleClass("social-deck__editor--over", overLimit);
+      };
+
+      textarea.addEventListener("input", () => {
+        this.drafts[platformId] = textarea.value;
+        updateCount();
+      });
+      updateCount();
+
+      const footer = card.createDiv({ cls: "social-deck__platform-footer" });
+      if (definition.supportsThreads) {
+        footer.createEl("small", { text: "Thread support planned" });
+      }
+      const resetButton = footer.createEl("button", { text: "Reset from note" });
+      resetButton.addEventListener("click", () => {
+        textarea.value = note.content;
+        this.drafts[platformId] = note.content;
+        updateCount();
+        new Notice(`${definition.name} preview reset`);
+      });
+    }
+  }
+}

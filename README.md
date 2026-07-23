@@ -14,7 +14,27 @@ Obsidian remains the source of truth for content and publication status. The plu
 
 ## Current status
 
-The initial scaffold provides a buildable Obsidian plugin, a Social Deck sidebar placeholder, platform definitions, settings and an example post schema. Publishing is not implemented yet.
+The plugin can read the active Markdown note, parse its `social-*` frontmatter and show separate editable previews for X, Bluesky and LinkedIn. Each preview has a live platform-specific character count and over-limit warning. Preview edits remain in memory and are not written back to the note yet. Publishing is not implemented.
+
+### Post frontmatter
+
+```yaml
+---
+social-status: draft
+social-platforms:
+  - x
+  - bluesky
+  - linkedin
+social-accounts:
+  x: torin-x
+  bluesky: torin-bluesky
+  linkedin: torin-linkedin
+social-scheduled-at:
+social-media:
+  - "[[incident-preparedness.png]]"
+social-published-urls: {}
+---
+```
 
 ## Development
 
