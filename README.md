@@ -65,7 +65,7 @@ flowchart LR
 
 ### Requirements
 1. Obsidian
-2. A self-hosted n8n instance
+2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -174,11 +174,3 @@ To create one on Linux or macOS:
 ```bash
 openssl rand -base64 32
 ```
-
-## Security
-
-Do not place social-platform API credentials in the Obsidian vault. See [SECURITY.md](SECURITY.md) for the credential boundary.
-
-## Licence
-
-MIT
