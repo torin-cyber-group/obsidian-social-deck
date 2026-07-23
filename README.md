@@ -2,14 +2,14 @@
 
 # Obsidian Social Deck
 
-Compose in Obsidian. Publish through n8n. 
+Compose in Obsidian. Publish through n8n.
 
 [![Plugin status](https://img.shields.io/badge/status-active%20development-2ea44f)](#current-status)
 [![Platform](https://img.shields.io/badge/platform-Obsidian-7c3aed)](https://obsidian.md/)
 [![Automation](https://img.shields.io/badge/automation-n8n-ea4b71)](https://n8n.io/)
 [![Bluesky](https://img.shields.io/badge/publishing-Bluesky-1185fe)](https://bsky.app/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#licence)
-[![Vibe Coded](https://shields.io)](https://github.com/danielrosehill/Vibe-Coded-Disclosure)
+[![Vibe Coded](https://img.shields.io/badge/vibe%20coded-disclosure-ff69b4)](https://github.com/danielrosehill/Vibe-Coded-Disclosure)
 
 
 [Overview](#overview) ·
@@ -31,7 +31,6 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - [Current status](#current-status)
 - [Bluesky credentials](#bluesky-credentials)
 - [Connect Obsidian to n8n](#connect-obsidian-to-n8n)
-- [Development](#development)
 - [Security](#security)
 - [Licence](#licence)
 
@@ -66,7 +65,7 @@ flowchart LR
 
 ### Requirements
 1. Obsidian
-2. An n8n instance, im using a self hosted instance.
+2. A self-hosted n8n instance
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -81,7 +80,7 @@ in the sidebar.
 Text-only Bluesky publishing is available from the plugin today. The recommended
 n8n setup uses a Social Deck router workflow that calls a Bluesky publisher
 sub-workflow. The Bluesky sub-workflow publishes text posts and creates URL link
-facets. 
+facets.
 
 X and LinkedIn plugin publishing, images, link preview cards and threads
 are not implemented yet.
@@ -175,39 +174,6 @@ To create one on Linux or macOS:
 ```bash
 openssl rand -base64 32
 ```
-
-## Development
-
-Requirements:
-
-- Node.js 20 or newer
-- npm
-- Obsidian 1.11.4 or newer
-
-Install dependencies and create a production build:
-
-```bash
-npm install
-npm run build
-```
-
-For local testing, copy or link `main.js`, `manifest.json` and `styles.css` into:
-
-```text
-<vault>/.obsidian/plugins/social-deck/
-```
-
-Reload Obsidian, enable **Social Deck** under Community plugins, then select **Open Social Deck** from the command palette or the raven ribbon icon.
-
-### Development builds
-
-Every successful GitHub Actions build on `main` produces an installable `social-deck.zip` artifact. See [Installing a development build](docs/installing-development-builds.md) for Windows and Obsidian instructions.
-
-Tags matching `v*` also create a GitHub release containing the installable ZIP.
-
-### Continuing development with Codex
-
-See the [Codex project hand-off](docs/CODEX_HANDOFF.md) for the implemented architecture, current limitations, security constraints and recommended next work.
 
 ## Security
 

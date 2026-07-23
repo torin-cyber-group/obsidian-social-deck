@@ -62,11 +62,14 @@ export class SocialDeckView extends ItemView {
       cls: "social-deck__editor",
       attr: {
         "aria-label": "Post text",
+        autocapitalize: "sentences",
+        autocomplete: "on",
         rows: "10",
         spellcheck: "true",
         placeholder: "Paste a post here"
       }
     });
+    textarea.lang = navigator.language || "en";
     textarea.value = this.postText;
 
     const footer = section.createDiv({ cls: "social-deck__platform-footer" });
