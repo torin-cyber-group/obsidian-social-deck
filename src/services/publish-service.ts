@@ -1,9 +1,15 @@
 import { requestUrl, type RequestUrlResponse } from "obsidian";
 
-export interface BlueskyPublishRequest {
+export interface SocialPublishRequest {
   fileName?: string;
   filePath?: string;
   text: string;
+  platforms: {
+    bluesky?: boolean;
+    linkedin?: {
+      authorUrn: string;
+    };
+  };
 }
 
 export interface BlueskyPublishResult {
@@ -13,6 +19,16 @@ export interface BlueskyPublishResult {
   cid: string;
   url: string;
 }
+
+export interface LinkedInPublishResult {
+  ok: true;
+  platform: "linkedin";
+  id: string;
+  authorUrn: string;
+  url?: string;
+}
+
+export type SocialPublishResult = BlueskyPublishResult | LinkedInPublishResult;
 
 export interface N8nConnectionTestResult {
   ok: true;
@@ -30,11 +46,22 @@ interface N8nFailureDetails {
   bodyPreview: string;
 }
 
-export async function publishBlueskyPost(
+export async function publishSocialPost(
   webhookUrl: string,
   webhookSecret: string,
-  request: BlueskyPublishRequest
-): Promise<BlueskyPublishResult> {
+  request: SocialPublishRequest
+): Promise<SocialPublishResult[]> {
+  const platforms: Record<string, unknown> = {};
+  if (request.platforms.bluesky) {
+    platforms.bluesky = { text: request.text };
+  }
+  if (request.platforms.linkedin) {
+    platforms.linkedin = {
+      text: request.text,
+      authorUrn: request.platforms.linkedin.authorUrn
+    };
+  }
+
   const responseJson = await sendSocialDeckRequest(
     webhookUrl,
     webhookSecret,
@@ -45,23 +72,19 @@ export async function publishBlueskyPost(
         fileName: request.fileName ?? "Quick post",
         filePath: request.filePath ?? "social-deck"
       },
-      platforms: {
-        bluesky: {
-          text: request.text
-        }
-      }
+      platforms
     },
     "publish"
   );
 
-  const result = extractBlueskyResult(responseJson);
+  const results = extractPublishResults(responseJson);
 
-  if (!result) {
+  if (results.length === 0) {
     console.error("Social Deck n8n returned unexpected publish payload", responseJson);
     throw new Error("n8n returned an unexpected JSON response");
   }
 
-  return result;
+  return results;
 }
 
 export async function testN8nConnection(
@@ -146,25 +169,40 @@ function isBlueskyResult(value: unknown): value is BlueskyPublishResult {
   );
 }
 
-function extractBlueskyResult(value: unknown): BlueskyPublishResult | undefined {
-  if (isBlueskyResult(value)) {
-    return value;
+function isLinkedInResult(value: unknown): value is LinkedInPublishResult {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const result = value as Record<string, unknown>;
+  return (
+    result.ok === true &&
+    result.platform === "linkedin" &&
+    typeof result.id === "string" &&
+    typeof result.authorUrn === "string" &&
+    (result.url === undefined || typeof result.url === "string")
+  );
+}
+
+function extractPublishResults(value: unknown): SocialPublishResult[] {
+  if (isBlueskyResult(value) || isLinkedInResult(value)) {
+    return [value];
   }
 
   if (Array.isArray(value)) {
-    return value.map(extractBlueskyResult).find((result) => result !== undefined);
+    return value.flatMap(extractPublishResults);
   }
 
   if (typeof value !== "object" || value === null) {
-    return undefined;
+    return [];
   }
 
   const record = value as Record<string, unknown>;
-  return (
-    extractBlueskyResult(record.json) ??
-    extractBlueskyResult(record.data) ??
-    extractBlueskyResult(record.result)
-  );
+  return [
+    ...extractPublishResults(record.json),
+    ...extractPublishResults(record.data),
+    ...extractPublishResults(record.result),
+    ...extractPublishResults(record.results)
+  ];
 }
 
 function isConnectionTestResult(value: unknown): value is N8nConnectionTestResult {

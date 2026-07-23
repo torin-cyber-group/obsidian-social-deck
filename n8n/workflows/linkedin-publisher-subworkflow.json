@@ -1,0 +1,128 @@
+{
+  "name": "Social Deck - LinkedIn publisher sub-workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "caf5eaf3-86de-42f4-b04d-24729031344a",
+      "name": "When executed by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const linkedin = $json.platforms?.linkedin ?? $json.linkedin ?? {};\nconst text = linkedin.text;\nconst authorUrn = linkedin.authorUrn;\n\nif (typeof text !== 'string' || text.trim().length === 0) {\n  throw new Error('LinkedIn text is required');\n}\nif ([...text].length > 3000) {\n  throw new Error('LinkedIn text exceeds 3000 characters');\n}\nif (typeof authorUrn !== 'string' || !/^urn:li:(person|organization):/.test(authorUrn)) {\n  throw new Error('LinkedIn authorUrn must be a person or organization URN');\n}\n\nreturn [{ json: {\n  ...$json,\n  linkedin: {\n    text,\n    authorUrn\n  }\n} }];"
+      },
+      "id": "9e969bba-1379-408b-bbb7-7dd2ddc126e2",
+      "name": "Prepare LinkedIn post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            },
+            {
+              "name": "Linkedin-Version",
+              "value": "202605"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\n  author: $('Prepare LinkedIn post').first().json.linkedin.authorUrn,\n  commentary: $('Prepare LinkedIn post').first().json.linkedin.text,\n  visibility: 'PUBLIC',\n  distribution: {\n    feedDistribution: 'MAIN_FEED',\n    targetEntities: [],\n    thirdPartyDistributionChannels: []\n  },\n  lifecycleState: 'PUBLISHED',\n  isReshareDisabledByAuthor: false\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "ab2385cf-32f9-4526-8bcb-24afd6071161",
+      "name": "Create LinkedIn post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('Prepare LinkedIn post').first().json;\nconst response = $json;\nconst headers = response.headers ?? {};\nconst body = response.body ?? response;\nconst id = headers['x-restli-id'] ?? headers['X-RestLi-Id'] ?? body.id;\n\nif (typeof id !== 'string' || id.length === 0) {\n  throw new Error('LinkedIn did not return a post ID');\n}\n\nreturn [{ json: {\n  ok: true,\n  platform: 'linkedin',\n  id,\n  authorUrn: previous.linkedin.authorUrn\n} }];"
+      },
+      "id": "b0c34a38-c227-49f6-ad6e-6f9ce4346d1d",
+      "name": "Record LinkedIn result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When executed by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare LinkedIn post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare LinkedIn post": {
+      "main": [
+        [
+          {
+            "node": "Create LinkedIn post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create LinkedIn post": {
+      "main": [
+        [
+          {
+            "node": "Record LinkedIn result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b1295780-0d46-4fbd-a4d3-31bb1fca062d",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "social-deck-linkedin-publisher-sub-workflow",
+  "tags": []
+}

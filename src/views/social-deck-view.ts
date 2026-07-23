@@ -2,18 +2,20 @@ import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { RAVEN_ICON } from "../icons";
 import { PLATFORM_DEFINITIONS } from "../platforms/definitions";
 import type SocialDeckPlugin from "../main";
+import type { SocialPlatform } from "../types/social";
 
 export const SOCIAL_DECK_VIEW_TYPE = "social-deck-view";
 
 interface PublishFeedback {
   platformName: string;
   publishedAt: string;
-  url: string;
+  url?: string;
+  id?: string;
 }
 
 export class SocialDeckView extends ItemView {
   private postText = "";
-  private publishFeedback: PublishFeedback | undefined;
+  private publishFeedback: PublishFeedback[] = [];
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: SocialDeckPlugin) {
     super(leaf);
@@ -51,10 +53,9 @@ export class SocialDeckView extends ItemView {
     const identity = header.createDiv();
     identity.createEl("strong", { text: "Quick post" });
     identity.createEl("small", { text: "Paste text here to publish" });
-    const blueskyDefinition = PLATFORM_DEFINITIONS.bluesky;
     const count = header.createEl("span", { cls: "social-deck__character-count" });
 
-    if (this.publishFeedback) {
+    if (this.publishFeedback.length > 0) {
       this.renderPublishFeedback(section, this.publishFeedback);
     }
 
@@ -78,29 +79,43 @@ export class SocialDeckView extends ItemView {
     const clearButton = actions.createEl("button", { text: "Clear" });
     const publishButton = actions.createEl("button", {
       cls: "mod-cta",
-      text: "Publish to Bluesky"
+      text: "Publish"
     });
 
     const updateCount = (): void => {
+      const enabledPlatforms = this.getEnabledPublishPlatforms();
+      const characterLimit = this.getCharacterLimit(enabledPlatforms);
       const length = [...textarea.value].length;
-      const overLimit = length > blueskyDefinition.characterLimit;
-      const blueskyEnabled = this.plugin.settings.enabledPlatforms.bluesky;
+      const overLimit = length > characterLimit;
       const missingConfiguration =
         !this.plugin.settings.webhookUrl || !this.plugin.getWebhookSecret();
-      footerStatus.textContent = blueskyEnabled
-        ? "Text-only Bluesky publishing is available"
-        : "Enable Bluesky in Social Deck settings to publish";
-      count.textContent = `${length.toLocaleString()} / ${blueskyDefinition.characterLimit.toLocaleString()}`;
+      const missingLinkedInAuthor =
+        this.plugin.settings.enabledPlatforms.linkedin && !this.plugin.settings.linkedinAuthorUrn;
+      const platformNames = enabledPlatforms.map((platform) => PLATFORM_DEFINITIONS[platform].name);
+      footerStatus.textContent =
+        platformNames.length > 0
+          ? `Text-only publishing to ${platformNames.join(" and ")} is available`
+          : "Enable a platform in Social Deck settings to publish";
+      count.textContent = `${length.toLocaleString()} / ${characterLimit.toLocaleString()}`;
       count.toggleClass("social-deck__character-count--over", overLimit);
       textarea.toggleClass("social-deck__editor--over", overLimit);
-      publishButton.disabled = length === 0 || overLimit || missingConfiguration || !blueskyEnabled;
+      publishButton.textContent =
+        platformNames.length > 0 ? `Publish to ${platformNames.join(" and ")}` : "Publish";
+      publishButton.disabled =
+        length === 0 ||
+        overLimit ||
+        missingConfiguration ||
+        missingLinkedInAuthor ||
+        enabledPlatforms.length === 0;
       publishButton.title = missingConfiguration
         ? "Configure the n8n webhook URL and SecretStorage entry in Social Deck settings"
-        : !blueskyEnabled
-          ? "Enable Bluesky to publish"
+        : missingLinkedInAuthor
+          ? "Configure the LinkedIn author URN in Social Deck settings"
+          : enabledPlatforms.length === 0
+          ? "Enable a platform in Social Deck settings"
           : overLimit
-            ? `Bluesky posts must be ${blueskyDefinition.characterLimit} characters or fewer`
-            : "Publish this text to Bluesky";
+            ? `Enabled platform posts must be ${characterLimit} characters or fewer`
+            : "Publish this text";
     };
 
     textarea.addEventListener("input", () => {
@@ -119,19 +134,20 @@ export class SocialDeckView extends ItemView {
       publishButton.textContent = "Publishing...";
       textarea.disabled = true;
       try {
-        const result = await this.plugin.publishBlueskyText(textarea.value);
-        this.publishFeedback = {
-          platformName: "Bluesky",
+        const results = await this.plugin.publishSocialText(textarea.value);
+        this.publishFeedback = results.map((result) => ({
+          platformName: PLATFORM_DEFINITIONS[result.platform].name,
           publishedAt: new Date().toLocaleString(),
-          url: result.url
-        };
-        new Notice("Published to Bluesky");
+          url: result.url,
+          id: result.platform === "linkedin" ? result.id : result.uri
+        }));
+        new Notice(`Published to ${this.publishFeedback.map((feedback) => feedback.platformName).join(" and ")}`);
         this.postText = "";
         await this.refresh();
       } catch (error) {
-        new Notice(`Bluesky publishing failed: ${error instanceof Error ? error.message : String(error)}`);
+        new Notice(`Publishing failed: ${error instanceof Error ? error.message : String(error)}`);
         textarea.disabled = false;
-        publishButton.textContent = "Publish to Bluesky";
+        publishButton.textContent = "Publish";
         updateCount();
       }
     });
@@ -139,25 +155,42 @@ export class SocialDeckView extends ItemView {
     updateCount();
   }
 
-  private renderPublishFeedback(container: Element, feedback: PublishFeedback): void {
-    const status = container.createDiv({ cls: "social-deck__publish-feedback" });
-    const message = status.createDiv();
-    message.createEl("strong", { text: `Posted to ${feedback.platformName}` });
-    message.createEl("small", { text: feedback.publishedAt });
+  private renderPublishFeedback(container: Element, feedbackItems: PublishFeedback[]): void {
+    for (const feedback of feedbackItems) {
+      const status = container.createDiv({ cls: "social-deck__publish-feedback" });
+      const message = status.createDiv();
+      message.createEl("strong", { text: `Posted to ${feedback.platformName}` });
+      message.createEl("small", { text: feedback.publishedAt });
 
-    const actions = status.createDiv({ cls: "social-deck__publish-feedback-actions" });
-    actions.createEl("a", {
-      text: "View post",
-      href: feedback.url,
-      attr: {
-        target: "_blank",
-        rel: "noopener noreferrer"
+      const actions = status.createDiv({ cls: "social-deck__publish-feedback-actions" });
+      if (feedback.url) {
+        actions.createEl("a", {
+          text: "View post",
+          href: feedback.url,
+          attr: {
+            target: "_blank",
+            rel: "noopener noreferrer"
+          }
+        });
       }
-    });
-    const copyButton = actions.createEl("button", { text: "Copy URL" });
-    copyButton.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(feedback.url);
-      new Notice("Bluesky URL copied");
-    });
+      const copyButton = actions.createEl("button", { text: feedback.url ? "Copy URL" : "Copy ID" });
+      copyButton.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(feedback.url ?? feedback.id ?? "");
+        new Notice(`${feedback.platformName} ${feedback.url ? "URL" : "ID"} copied`);
+      });
+    }
+  }
+
+  private getEnabledPublishPlatforms(): SocialPlatform[] {
+    return (["bluesky", "linkedin"] as SocialPlatform[]).filter(
+      (platform) => this.plugin.settings.enabledPlatforms[platform]
+    );
+  }
+
+  private getCharacterLimit(platforms: SocialPlatform[]): number {
+    if (platforms.length === 0) {
+      return PLATFORM_DEFINITIONS.bluesky.characterLimit;
+    }
+    return Math.min(...platforms.map((platform) => PLATFORM_DEFINITIONS[platform].characterLimit));
   }
 }

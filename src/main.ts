@@ -2,16 +2,12 @@ import { addIcon, Plugin, setIcon, WorkspaceLeaf } from "obsidian";
 import { RAVEN_ICON, RAVEN_ICON_SVG } from "./icons";
 import { DEFAULT_SETTINGS, SocialDeckSettingTab, type SocialDeckSettings } from "./settings";
 import {
-  publishBlueskyPost,
+  publishSocialPost,
   testN8nConnection,
-  type BlueskyPublishResult,
-  type N8nConnectionTestResult
+  type N8nConnectionTestResult,
+  type SocialPublishResult
 } from "./services/publish-service";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
-
-interface LegacySocialDeckSettings extends Partial<SocialDeckSettings> {
-  webhookSecret?: string;
-}
 
 export default class SocialDeckPlugin extends Plugin {
   settings: SocialDeckSettings = DEFAULT_SETTINGS;
@@ -35,14 +31,8 @@ export default class SocialDeckPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    const savedData = (await this.loadData()) as LegacySocialDeckSettings | null;
+    const savedData = (await this.loadData()) as Partial<SocialDeckSettings> | null;
     const savedSettings = Object.assign({}, DEFAULT_SETTINGS, savedData);
-
-    if (!savedSettings.webhookSecretId && savedData?.webhookSecret) {
-      const migratedSecretId = "social-deck-n8n-webhook-secret";
-      this.app.secretStorage.setSecret(migratedSecretId, savedData.webhookSecret);
-      savedSettings.webhookSecretId = migratedSecretId;
-    }
 
     this.settings = {
       webhookUrl: savedSettings.webhookUrl,
@@ -52,12 +42,9 @@ export default class SocialDeckPlugin extends Plugin {
         ...DEFAULT_SETTINGS.enabledPlatforms,
         ...savedSettings.enabledPlatforms
       },
+      linkedinAuthorUrn: savedSettings.linkedinAuthorUrn,
       accountLabel: savedSettings.accountLabel
     };
-
-    if (savedData?.webhookSecret) {
-      await this.saveSettings();
-    }
   }
 
   async saveSettings(): Promise<void> {
@@ -65,8 +52,16 @@ export default class SocialDeckPlugin extends Plugin {
     await this.refreshViews();
   }
 
-  async publishBlueskyText(text: string): Promise<BlueskyPublishResult> {
-    return publishBlueskyPost(this.settings.webhookUrl, this.getWebhookSecret(), { text });
+  async publishSocialText(text: string): Promise<SocialPublishResult[]> {
+    return publishSocialPost(this.settings.webhookUrl, this.getWebhookSecret(), {
+      text,
+      platforms: {
+        bluesky: this.settings.enabledPlatforms.bluesky,
+        linkedin: this.settings.enabledPlatforms.linkedin
+          ? { authorUrn: this.settings.linkedinAuthorUrn }
+          : undefined
+      }
+    });
   }
 
   async testN8nConnection(): Promise<N8nConnectionTestResult> {
