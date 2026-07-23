@@ -1,4 +1,5 @@
-import { Plugin, setIcon, TFile, WorkspaceLeaf } from "obsidian";
+import { addIcon, Plugin, setIcon, TFile, WorkspaceLeaf } from "obsidian";
+import { RAVEN_ICON, RAVEN_ICON_SVG } from "./icons";
 import { DEFAULT_SETTINGS, SocialDeckSettingTab, type SocialDeckSettings } from "./settings";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
 
@@ -8,8 +9,9 @@ export default class SocialDeckPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
+    addIcon(RAVEN_ICON, RAVEN_ICON_SVG);
     this.registerView(SOCIAL_DECK_VIEW_TYPE, (leaf) => new SocialDeckView(leaf, this));
-    this.addRibbonIcon("send", "Open Social Deck", () => this.activateView());
+    this.addRibbonIcon(RAVEN_ICON, "Open Social Deck", () => this.activateView());
     this.addCommand({
       id: "open-social-deck",
       name: "Open Social Deck",

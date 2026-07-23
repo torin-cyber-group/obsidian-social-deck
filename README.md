@@ -57,7 +57,7 @@ For local testing, copy or link `main.js`, `manifest.json` and `styles.css` into
 <vault>/.obsidian/plugins/social-deck/
 ```
 
-Reload Obsidian, enable **Social Deck** under Community plugins, then select **Open Social Deck** from the command palette or ribbon.
+Reload Obsidian, enable **Social Deck** under Community plugins, then select **Open Social Deck** from the command palette or the raven ribbon icon.
 
 ### Development builds
 

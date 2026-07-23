@@ -1,4 +1,5 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { RAVEN_ICON } from "../icons";
 import { PLATFORM_DEFINITIONS } from "../platforms/definitions";
 import { parseSocialNote } from "../services/note-parser";
 import type SocialDeckPlugin from "../main";
@@ -24,7 +25,7 @@ export class SocialDeckView extends ItemView {
   }
 
   getIcon(): string {
-    return "send";
+    return RAVEN_ICON;
   }
 
   async onOpen(): Promise<void> {

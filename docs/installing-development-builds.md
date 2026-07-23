@@ -31,11 +31,10 @@ styles.css
 5. In Obsidian, open **Settings → Community plugins**.
 6. Select **Reload plugins** or restart Obsidian.
 7. Enable **Social Deck**.
-8. Use the paper-plane ribbon icon or run **Social Deck: Open Social Deck** from the command palette.
+8. Use the raven ribbon icon or run **Social Deck: Open Social Deck** from the command palette.
 
 To update an existing development installation, replace the same three files and reload Obsidian.
 
 ## Test with the example note
 
 Copy [`examples/example-post.md`](../examples/example-post.md) into the vault and open it. Social Deck should display X, Bluesky and LinkedIn previews with separate character counts.
-
