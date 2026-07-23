@@ -51,6 +51,45 @@
   text-transform: capitalize;
 }
 
+.social-deck__platform-selector {
+  margin: var(--size-4-4) 0;
+}
+
+.social-deck__section-label {
+  color: var(--text-muted);
+  display: block;
+  font-size: var(--font-ui-smaller);
+  margin-bottom: var(--size-4-2);
+}
+
+.social-deck__platform-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+}
+
+.social-deck__platform-toggle {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  display: inline-flex;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  user-select: none;
+}
+
+.social-deck__platform-toggle:has(input:checked) {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.social-deck__platform-toggle input {
+  margin: 0;
+}
+
 .social-deck__platforms {
   display: grid;
   gap: var(--size-4-4);

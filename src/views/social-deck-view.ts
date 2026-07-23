@@ -107,9 +107,18 @@ export class SocialDeckView extends ItemView {
       });
     }
 
+    this.renderPlatformToggles(container, file, note);
+
     if (!note.content) {
       const emptyState = container.createDiv({ cls: "social-deck__empty" });
       emptyState.createEl("p", { text: "This note has no post content." });
+      return;
+    }
+
+    if (note.metadata.platforms.length === 0) {
+      const emptyState = container.createDiv({ cls: "social-deck__empty" });
+      emptyState.createEl("p", { text: "No platforms selected." });
+      emptyState.createEl("small", { text: "Enable at least one platform above to create a preview." });
       return;
     }
 
@@ -158,6 +167,48 @@ export class SocialDeckView extends ItemView {
         this.drafts[platformId] = note.content;
         updateCount();
         new Notice(`${definition.name} preview reset`);
+      });
+    }
+  }
+
+  private renderPlatformToggles(
+    container: Element,
+    file: TFile,
+    note: ParsedSocialNote
+  ): void {
+    const section = container.createDiv({ cls: "social-deck__platform-selector" });
+    section.createEl("span", { cls: "social-deck__section-label", text: "Publish to" });
+    const controls = section.createDiv({ cls: "social-deck__platform-toggles" });
+
+    for (const definition of Object.values(PLATFORM_DEFINITIONS)) {
+      const label = controls.createEl("label", { cls: "social-deck__platform-toggle" });
+      const checkbox = label.createEl("input", {
+        type: "checkbox",
+        attr: { "aria-label": `Enable ${definition.name}` }
+      });
+      checkbox.checked = note.metadata.platforms.includes(definition.id);
+      label.createEl("span", { text: definition.name });
+
+      checkbox.addEventListener("change", async () => {
+        const inputs = Array.from(controls.querySelectorAll<HTMLInputElement>("input"));
+        inputs.forEach((input) => (input.disabled = true));
+
+        const next = Object.values(PLATFORM_DEFINITIONS)
+          .filter((platform) => {
+            const input = controls.querySelector<HTMLInputElement>(
+              `input[aria-label="Enable ${platform.name}"]`
+            );
+            return input?.checked;
+          })
+          .map((platform) => platform.id);
+
+        try {
+          await this.plugin.savePlatforms(file, next);
+          await this.refresh();
+        } catch (error) {
+          new Notice(`Could not update platforms: ${error instanceof Error ? error.message : String(error)}`);
+          await this.refresh();
+        }
       });
     }
   }

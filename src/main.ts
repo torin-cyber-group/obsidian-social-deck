@@ -1,6 +1,7 @@
 import { addIcon, Plugin, setIcon, TFile, WorkspaceLeaf } from "obsidian";
 import { RAVEN_ICON, RAVEN_ICON_SVG } from "./icons";
 import { DEFAULT_SETTINGS, SocialDeckSettingTab, type SocialDeckSettings } from "./settings";
+import type { SocialPlatform } from "./types/social";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
 
 export default class SocialDeckPlugin extends Plugin {
@@ -43,6 +44,12 @@ export default class SocialDeckPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  async savePlatforms(file: TFile, platforms: SocialPlatform[]): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      frontmatter["social-platforms"] = platforms;
+    });
   }
 
   setIcon(element: HTMLElement, icon: string): void {

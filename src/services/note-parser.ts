@@ -45,10 +45,14 @@ function parseStatus(value: unknown): SocialPostStatus {
 }
 
 function parsePlatforms(value: unknown): SocialPlatform[] {
+  if (value === undefined || value === null) {
+    return [...SUPPORTED_PLATFORMS];
+  }
+
   const requested = parseStringArray(value).filter((platform): platform is SocialPlatform =>
     SUPPORTED_PLATFORMS.includes(platform as SocialPlatform)
   );
-  return requested.length > 0 ? [...new Set(requested)] : [...SUPPORTED_PLATFORMS];
+  return [...new Set(requested)];
 }
 
 function parseAccounts(value: unknown): Partial<Record<SocialPlatform, string>> {
@@ -99,4 +103,3 @@ function parseOptionalString(value: unknown): string | undefined {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
