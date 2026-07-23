@@ -184,10 +184,10 @@ export class SocialDeckView extends ItemView {
         textarea.toggleClass("social-deck__editor--over", overLimit);
         if (publishButton) {
           const missingConfiguration =
-            !this.plugin.settings.webhookUrl || !this.plugin.settings.webhookSecret;
+            !this.plugin.settings.webhookUrl || !this.plugin.getWebhookSecret();
           publishButton.disabled = length === 0 || overLimit || missingConfiguration;
           publishButton.title = missingConfiguration
-            ? "Configure the n8n webhook URL and secret in Social Deck settings"
+            ? "Configure the n8n webhook URL and SecretStorage entry in Social Deck settings"
             : overLimit
               ? `Bluesky posts must be ${definition.characterLimit} characters or fewer`
               : "Publish this text to Bluesky";

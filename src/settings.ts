@@ -1,15 +1,15 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, SecretComponent, Setting } from "obsidian";
 import type SocialDeckPlugin from "./main";
 
 export interface SocialDeckSettings {
   webhookUrl: string;
-  webhookSecret: string;
+  webhookSecretId: string;
   accountLabel: string;
 }
 
 export const DEFAULT_SETTINGS: SocialDeckSettings = {
   webhookUrl: "",
-  webhookSecret: "",
+  webhookSecretId: "",
   accountLabel: "Default"
 };
 
@@ -38,17 +38,15 @@ export class SocialDeckSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("n8n webhook secret")
-      .setDesc("Bearer token required by the n8n webhook. This is not a social-network password.")
-      .addText((text) => {
-        text.inputEl.type = "password";
-        text
-          .setPlaceholder("A long random value")
-          .setValue(this.plugin.settings.webhookSecret)
+      .setDesc("SecretStorage entry sent in the X-Social-Deck-Secret header. Store the secret value in Obsidian's secret store, not plugin data.")
+      .addComponent((element) =>
+        new SecretComponent(this.app, element)
+          .setValue(this.plugin.settings.webhookSecretId)
           .onChange(async (value) => {
-            this.plugin.settings.webhookSecret = value.trim();
+            this.plugin.settings.webhookSecretId = value.trim();
             await this.plugin.saveSettings();
-          });
-      });
+          })
+      );
 
     new Setting(containerEl)
       .setName("Default account label")

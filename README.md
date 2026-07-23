@@ -73,19 +73,35 @@ After importing and configuring the n8n workflow:
 
 1. In n8n, create a **Header Auth** credential for the **Social Deck webhook**
    node.
-2. Set the header name to `Authorization`.
-3. Set the credential value to `Bearer ` followed by a long random secret, for
-   example `Bearer replace-with-a-long-random-value`.
+2. Set the header name to `X-Social-Deck-Secret`.
+3. Set the credential value to a long random secret, for example
+   `replace-with-a-long-random-value`.
 4. Save and activate the workflow.
 5. Copy the production webhook URL from the **Social Deck webhook** node. It
    normally ends with `/webhook/social-deck`.
 6. In Obsidian, open **Settings → Community plugins → Social Deck**.
 7. Paste the production URL into **n8n webhook URL**.
-8. Paste only the random secret into **n8n webhook secret**. Do not include the
-   `Bearer ` prefix; the plugin adds it when sending the request.
+8. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
+   containing the same random secret.
 
 Use the production webhook URL, not the test URL. n8n only accepts production
 webhook requests while the workflow is active.
+
+Social Deck stores the webhook URL and selected secret ID in Obsidian plugin
+data. The webhook secret value is stored through Obsidian SecretStorage rather
+than in `data.json`.
+
+To create a random secret in PowerShell:
+
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+To create one on Linux or macOS:
+
+```bash
+openssl rand -base64 32
+```
 
 ### Post frontmatter
 
@@ -113,7 +129,7 @@ Requirements:
 
 - Node.js 20 or newer
 - npm
-- Obsidian 1.7.2 or newer
+- Obsidian 1.11.4 or newer
 
 Install dependencies and create a production build:
 

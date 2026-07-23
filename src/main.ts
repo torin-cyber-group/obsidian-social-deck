@@ -5,6 +5,10 @@ import { publishBlueskyPost, type BlueskyPublishResult } from "./services/publis
 import type { SocialPlatform } from "./types/social";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
 
+interface LegacySocialDeckSettings extends Partial<SocialDeckSettings> {
+  webhookSecret?: string;
+}
+
 export default class SocialDeckPlugin extends Plugin {
   settings: SocialDeckSettings = DEFAULT_SETTINGS;
 
@@ -40,7 +44,24 @@ export default class SocialDeckPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const savedData = (await this.loadData()) as LegacySocialDeckSettings | null;
+    const savedSettings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+
+    if (!savedSettings.webhookSecretId && savedData?.webhookSecret) {
+      const migratedSecretId = "social-deck-n8n-webhook-secret";
+      this.app.secretStorage.setSecret(migratedSecretId, savedData.webhookSecret);
+      savedSettings.webhookSecretId = migratedSecretId;
+    }
+
+    this.settings = {
+      webhookUrl: savedSettings.webhookUrl,
+      webhookSecretId: savedSettings.webhookSecretId,
+      accountLabel: savedSettings.accountLabel
+    };
+
+    if (savedData?.webhookSecret) {
+      await this.saveSettings();
+    }
   }
 
   async saveSettings(): Promise<void> {
@@ -56,7 +77,7 @@ export default class SocialDeckPlugin extends Plugin {
   async publishBluesky(file: TFile, text: string): Promise<BlueskyPublishResult> {
     const result = await publishBlueskyPost(
       this.settings.webhookUrl,
-      this.settings.webhookSecret,
+      this.getWebhookSecret(),
       { fileName: file.basename, filePath: file.path, text }
     );
 
@@ -76,6 +97,12 @@ export default class SocialDeckPlugin extends Plugin {
     });
 
     return result;
+  }
+
+  getWebhookSecret(): string {
+    return this.settings.webhookSecretId
+      ? this.app.secretStorage.getSecret(this.settings.webhookSecretId) ?? ""
+      : "";
   }
 
   setIcon(element: HTMLElement, icon: string): void {

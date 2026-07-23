@@ -31,7 +31,7 @@ export async function publishBlueskyPost(
     method: "POST",
     contentType: "application/json",
     headers: {
-      Authorization: `Bearer ${webhookSecret.trim()}`
+      "X-Social-Deck-Secret": webhookSecret.trim()
     },
     body: JSON.stringify({
       schemaVersion: 1,
@@ -82,4 +82,3 @@ function extractErrorMessage(value: unknown): string | undefined {
   const error = (value as Record<string, unknown>).error;
   return typeof error === "string" && error.trim() ? error.trim() : undefined;
 }
-

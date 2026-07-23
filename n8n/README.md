@@ -52,12 +52,25 @@ permission to create UGC posts. The workflow expects
 ### 3. Secure the webhook
 
 1. Create an n8n **Header Auth** credential.
-2. Set the header name to `Authorization`.
-3. Set its value to `Bearer ` followed by a long random secret.
+2. Set the header name to `X-Social-Deck-Secret`.
+3. Set its value to a long random secret.
 4. Open the **Social Deck webhook** node and select that credential.
 5. Save and activate the workflow.
 
-Enter the same random secret—without the `Bearer ` prefix—in Social Deck's **n8n webhook secret** setting.
+Enter the same random secret in an Obsidian SecretStorage entry selected from
+Social Deck's **n8n webhook secret** setting.
+
+To create a random secret in PowerShell:
+
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+To create one on Linux or macOS:
+
+```bash
+openssl rand -base64 32
+```
 
 ### 4. Configure Social Deck
 
@@ -67,7 +80,8 @@ In Obsidian:
 
 1. Open **Settings → Community plugins → Social Deck**.
 2. Paste the n8n production webhook URL into **n8n webhook URL**.
-3. Paste the random secret into **n8n webhook secret** without the `Bearer ` prefix.
+3. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
+   containing the random secret.
 4. Open a Markdown note with `bluesky` in `social-platforms`.
 5. Open **Social Deck** from the command palette or ribbon.
 6. Select **Publish to Bluesky**.
@@ -94,7 +108,7 @@ You can smoke-test the n8n side before using Obsidian:
 
 ```bash
 curl -X POST "https://n8n.example.com/webhook/social-deck" \
-  -H "Authorization: Bearer replace-with-a-long-random-value" \
+  -H "X-Social-Deck-Secret: replace-with-a-long-random-value" \
   -H "Content-Type: application/json" \
   -d '{
     "schemaVersion": 1,
