@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    route: 'connection-test',\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nif (blueskyText !== undefined) {\n  return [{ json: {\n    route: 'bluesky',\n    source: body.source ?? {},\n    requestedAt: body.requestedAt ?? null,\n    bluesky: {\n      text: blueskyText\n    }\n  } }];\n}\n\nthrow new Error('No supported Social Deck platforms were enabled');"
+        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    route: 'connection-test',\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nenabled.bluesky = blueskyText === undefined\n  ? { enabled: false }\n  : { enabled: true, text: blueskyText };\n\nconst linkedinText = parseText('linkedin', 3000);\nif (linkedinText === undefined) {\n  enabled.linkedin = { enabled: false };\n} else {\n  const authorUrn = typeof platforms.linkedin?.authorUrn === 'string'\n    ? platforms.linkedin.authorUrn.trim()\n    : '';\n  if (!/^urn:li:(person|organization):/.test(authorUrn)) {\n    throw new Error('LinkedIn authorUrn must be a person or organization URN');\n  }\n  enabled.linkedin = {\n    enabled: true,\n    text: linkedinText,\n    authorUrn\n  };\n}\n\nif (!enabled.bluesky.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  route: 'publish',\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  results: []\n} }];"
       },
       "id": "18797a7f-350b-4738-afaf-a0fe25d11d7c",
       "name": "Route request",
@@ -82,6 +82,40 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9ed72f8-477f-4f7f-9ba1-cae511264fe1",
+              "leftValue": "={{ $json.platforms.bluesky.enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "230217ad-46b6-458a-8bb9-c40e660c2681",
+      "name": "If Bluesky enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        120
+      ]
+    },
+    {
+      "parameters": {
         "workflowId": "REPLACE_WITH_N8N_BLUESKY_SUB_WORKFLOW_ID",
         "source": "database",
         "mode": "once"
@@ -91,14 +125,89 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        720,
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If Bluesky enabled').first().json;\nconst result = unwrap($json);\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
+      },
+      "id": "367071a1-8796-45b8-b971-786112e86630",
+      "name": "Record Bluesky result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ac68167-1783-450f-b7b8-b906878f75d0",
+              "leftValue": "={{ $json.platforms.linkedin.enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f281cf56-63ec-4c49-ae65-ddc5bf1e7adc",
+      "name": "If LinkedIn enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
         120
       ]
     },
     {
       "parameters": {
+        "workflowId": "REPLACE_WITH_N8N_LINKEDIN_SUB_WORKFLOW_ID",
+        "source": "database",
+        "mode": "once"
+      },
+      "id": "f7609a2d-f310-4a5f-b3d1-47c4392678b8",
+      "name": "Call LinkedIn workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If LinkedIn enabled').first().json;\nconst result = unwrap($json);\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
+      },
+      "id": "cf29c922-6c7f-43b2-91cc-0b2c984eceaa",
+      "name": "Record LinkedIn result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json.json ?? $json.data ?? $json.result ?? $json }}",
+        "responseBody": "={{ $json.results.length === 1 ? $json.results[0] : { ok: true, results: $json.results } }}",
         "options": {}
       },
       "id": "38763cd3-c5e4-44af-b93c-cd2df1fffd3b",
@@ -106,7 +215,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        960,
+        2160,
         120
       ]
     }
@@ -146,7 +255,25 @@
         ],
         [
           {
+            "node": "If Bluesky enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Bluesky enabled": {
+      "main": [
+        [
+          {
             "node": "Call Bluesky workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If LinkedIn enabled",
             "type": "main",
             "index": 0
           }
@@ -154,6 +281,57 @@
       ]
     },
     "Call Bluesky workflow": {
+      "main": [
+        [
+          {
+            "node": "Record Bluesky result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Bluesky result": {
+      "main": [
+        [
+          {
+            "node": "If LinkedIn enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If LinkedIn enabled": {
+      "main": [
+        [
+          {
+            "node": "Call LinkedIn workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return platform result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call LinkedIn workflow": {
+      "main": [
+        [
+          {
+            "node": "Record LinkedIn result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record LinkedIn result": {
       "main": [
         [
           {

@@ -8,6 +8,7 @@ export interface SocialDeckSettings {
   webhookTestUrl: string;
   webhookSecretId: string;
   enabledPlatforms: Record<SocialPlatform, boolean>;
+  linkedinAuthorUrn: string;
   accountLabel: string;
 }
 
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: SocialDeckSettings = {
     bluesky: true,
     linkedin: false
   },
+  linkedinAuthorUrn: "",
   accountLabel: "Default"
 };
 
@@ -93,12 +95,14 @@ export class SocialDeckSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName("Enabled platforms").setHeading();
 
     for (const definition of Object.values(PLATFORM_DEFINITIONS)) {
-      const isAvailable = definition.id === "bluesky";
+      const isAvailable = definition.id === "bluesky" || definition.id === "linkedin";
       new Setting(containerEl)
         .setName(isAvailable ? definition.name : `${definition.name} planned`)
         .setDesc(
-          isAvailable
+          definition.id === "bluesky"
             ? "Show Bluesky publishing in the composer."
+            : definition.id === "linkedin"
+            ? "Show LinkedIn publishing in the composer."
             : "This platform is included in the n8n workflow, but Obsidian publishing controls are not enabled yet."
         )
         .addToggle((toggle) =>
@@ -111,6 +115,19 @@ export class SocialDeckSettingTab extends PluginSettingTab {
             })
         );
     }
+
+    new Setting(containerEl)
+      .setName("LinkedIn author URN")
+      .setDesc("The LinkedIn author to publish as, for example urn:li:person:abc123 or urn:li:organization:123456.")
+      .addText((text) =>
+        text
+          .setPlaceholder("urn:li:person:...")
+          .setValue(this.plugin.settings.linkedinAuthorUrn)
+          .onChange(async (value) => {
+            this.plugin.settings.linkedinAuthorUrn = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
 
     new Setting(containerEl)
       .setName("Default account label")

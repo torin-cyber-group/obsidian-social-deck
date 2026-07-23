@@ -33,39 +33,47 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - [Basic setup](#basic-setup)
 - [Social Media Credentials](#social-media-credentials)
 - [Bluesky credentials](#bluesky-credentials)
+- [LinkedIn credentials](#linkedin-credentials)
+- [Flow Chart](#flow-chart)
 - [Connect Obsidian to n8n](#connect-obsidian-to-n8n)
 
 ## Planned platforms
 
-- Bluesky (in progress)
+- Bluesky
 - LinkedIn personal profiles and organisation pages
 - X/Twitter
 
 <a id="current-status"></a>
 <details>
-<summary>Current status</summary>
+<summary><h3>Current status</h3></summary>
 
 The sidebar includes a composer where you can paste post text directly and
 publish. Platform enablement lives in plugin settings, and character counts live
 in the sidebar.
 
-Text-only Bluesky publishing is available from the plugin today. The recommended
-n8n setup uses a Social Deck router workflow that calls a Bluesky publisher
-sub-workflow. The Bluesky sub-workflow publishes text posts and creates URL link
-facets.
+Text-only Bluesky and LinkedIn publishing are available from the plugin today.
+The recommended n8n setup uses a Social Deck router workflow that calls
+platform-specific publisher sub-workflows. The Bluesky sub-workflow creates URL
+link facets.
 
-X and LinkedIn plugin publishing, images, link preview cards and threads
-are not implemented yet.
+X/Twitter publishing, images, link preview cards and threads are not implemented
+yet.
 
 </details>
 
 ## Architecture
 
 <details>
-<summary>Requirements</summary>
+<summary><h3>Requirements</h3></summary>
 
 1. Obsidian
 2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
+
+</details>
+
+<a id="flow-chart"></a>
+<details>
+<summary><h3>Flow Chart</h3></summary>
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -78,7 +86,7 @@ flowchart LR
 
     B -->|"testConnection: true"| C["Return connection test"]
     B -->|"platforms.bluesky"| D["Bluesky publisher<br/>sub-workflow"]
-    B -.->|"future platforms.linkedin"| E["LinkedIn publisher<br/>sub-workflow"]
+    B -->|"platforms.linkedin"| E["LinkedIn publisher<br/>sub-workflow"]
     B -.->|"future platforms.x"| F["X/Twitter publisher<br/>sub-workflow"]
 
     D -->|"createSession<br/>app password credential"| G["Bluesky API"]
@@ -88,7 +96,7 @@ flowchart LR
     B -->|"JSON result"| A
 
     H[("n8n credentials")] -.-> D
-    H -.->|"future"| E
+    H -.-> E
     H -.->|"future"| F
 ```
 
@@ -97,7 +105,7 @@ flowchart LR
 ## Basic setup
 
 <details>
-<summary>Obsidian</summary>
+<summary><h3>Obsidian</h3></summary>
 
 1. Download the latest release.
 2. Unzip
@@ -106,9 +114,9 @@ flowchart LR
 </details>
 
 <details>
-<summary>n8n</summary>
+<summary><h3>n8n</h3></summary>
 
-1. 
+1. Import and configure the router and platform sub-workflows from the [n8n setup guide](n8n/README.md).
 
 </details>
 
@@ -116,7 +124,7 @@ flowchart LR
 
 <a id="bluesky-credentials"></a>
 <details>
-<summary>Bluesky credentials</summary>
+<summary><h3>Bluesky credentials</h3></summary>
 
 The text-posting workflow does not require a Bluesky developer account, API key or client secret. It uses:
 
@@ -125,10 +133,7 @@ The text-posting workflow does not require a Bluesky developer account, API key 
 
 Do not use your primary Bluesky account password.
 
-</details>
-
-<details>
-<summary>Create an app password</summary>
+#### Create an app password
 
 1. Sign in to [Bluesky](https://bsky.app/) in a web browser.
 2. Open the direct [App Passwords](https://bsky.app/settings/app-passwords) page.
@@ -141,10 +146,7 @@ Do not use your primary Bluesky account password.
 
 If the password is lost or exposed, delete it from the same App Passwords page and create a replacement. Revoking this password does not change the primary account password.
 
-</details>
-
-<details>
-<summary>Add the credentials to n8n</summary>
+#### Add the credentials to n8n
 
 Import [`n8n/workflows/bluesky-publisher-subworkflow.json`](n8n/workflows/bluesky-publisher-subworkflow.json)
 and [`n8n/workflows/social-deck-router.json`](n8n/workflows/social-deck-router.json).
@@ -167,6 +169,25 @@ repository.
 Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
 
 The current self-hosted workflow uses an app password for a single account. 
+
+</details>
+
+<a id="linkedin-credentials"></a>
+<details>
+<summary><h3>LinkedIn credentials</h3></summary>
+
+LinkedIn publishing uses an OAuth2 credential in n8n and a LinkedIn author URN
+in Obsidian settings. The credential stays in n8n; Obsidian only stores the
+author target, such as `urn:li:person:abc123` or
+`urn:li:organization:123456`.
+
+Import [`n8n/workflows/linkedin-publisher-subworkflow.json`](n8n/workflows/linkedin-publisher-subworkflow.json)
+and select the LinkedIn OAuth2 credential on the **Create LinkedIn post** node.
+Then enter the matching author URN in Social Deck settings and enable LinkedIn
+under **Enabled platforms**.
+
+Follow the full [n8n setup guide](n8n/README.md) for router wiring and webhook
+security.
 
 </details>
 
