@@ -18,6 +18,43 @@ The plugin can read the active Markdown note, parse its `social-*` frontmatter a
 
 Text-only Bluesky publishing is available through the included n8n workflow. Bluesky credentials remain in n8n, and the resulting public post URL is written back to the note. X and LinkedIn publishing, images, rich links and threads are not implemented yet.
 
+## Bluesky credentials
+
+The text-posting workflow does not require a Bluesky developer account, API key or client secret. It uses:
+
+- Your full Bluesky handle, such as `example.bsky.social` or a custom-domain handle.
+- A dedicated Bluesky app password.
+
+Do not use your primary Bluesky account password.
+
+### Create an app password
+
+1. Sign in to [Bluesky](https://bsky.app/) in a web browser.
+2. Open the direct [App Passwords](https://bsky.app/settings/app-passwords) page.
+3. If using the settings menu, look under **Settings → Privacy and Security → App Passwords**. Some Bluesky versions place it under **Settings → Advanced → App Passwords**.
+4. Select **Add App Password**.
+5. Give it a recognisable name, such as `Social Deck n8n`.
+6. Leave direct-message access disabled. Social Deck does not need it.
+7. Create the password and copy it immediately. Bluesky displays an app password only once.
+8. Store it in your password manager until n8n is configured.
+
+If the password is lost or exposed, delete it from the same App Passwords page and create a replacement. Revoking this password does not change the primary account password.
+
+### Add the credentials to n8n
+
+Add the handle and app password as environment variables on the n8n container or service:
+
+```text
+BLUESKY_HANDLE=example.bsky.social
+BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+```
+
+Restart n8n after adding or changing the variables. Do not place these values in the workflow JSON, Obsidian settings, Markdown frontmatter or this repository.
+
+Import [`n8n/workflows/bluesky-text-post.json`](n8n/workflows/bluesky-text-post.json), then follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
+
+The current self-hosted workflow uses an app password for a single account. A future multi-user or hosted Social Deck service should use [AT Protocol OAuth](https://docs.bsky.app/blog/oauth-atproto) instead.
+
 ### Post frontmatter
 
 ```yaml
