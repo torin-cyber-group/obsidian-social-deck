@@ -1,0 +1,11 @@
+{
+  "id": "social-deck",
+  "name": "Social Deck",
+  "version": "0.1.0",
+  "minAppVersion": "1.7.2",
+  "description": "Compose, preview, schedule and publish social posts from Obsidian through n8n.",
+  "author": "Torin Cyber Group",
+  "authorUrl": "https://github.com/torin-cyber-group",
+  "isDesktopOnly": false
+}
+

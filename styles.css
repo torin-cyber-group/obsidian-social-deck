@@ -1,0 +1,36 @@
+.social-deck {
+  padding: var(--size-4-3);
+}
+
+.social-deck__intro {
+  color: var(--text-muted);
+}
+
+.social-deck__platforms {
+  display: grid;
+  gap: var(--size-4-2);
+  margin: var(--size-4-4) 0;
+}
+
+.social-deck__platform-card {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  display: flex;
+  justify-content: space-between;
+  padding: var(--size-4-3);
+}
+
+.social-deck__platform-card span,
+.social-deck__empty {
+  color: var(--text-muted);
+}
+
+.social-deck__empty {
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: var(--size-4-6) var(--size-4-3);
+  text-align: center;
+}
+
