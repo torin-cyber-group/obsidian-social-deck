@@ -44,8 +44,10 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - X/Twitter
 
 <a id="current-status"></a>
+### Current status
+
 <details>
-<summary><strong>Current status</strong></summary>
+<summary>Show details</summary>
 
 The sidebar includes a composer where you can paste post text directly and
 publish. Platform enablement lives in plugin settings, and character counts live
@@ -63,8 +65,10 @@ yet.
 
 ## Architecture
 
+### Requirements
+
 <details>
-<summary><strong>Requirements</strong></summary>
+<summary>Show details</summary>
 
 1. Obsidian
 2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
@@ -72,8 +76,10 @@ yet.
 </details>
 
 <a id="flow-chart"></a>
+### Flow Chart
+
 <details>
-<summary><strong>Flow Chart</strong></summary>
+<summary>Show details</summary>
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -104,8 +110,10 @@ flowchart LR
 
 ## Basic setup
 
+### Obsidian
+
 <details>
-<summary><strong>Obsidian</strong></summary>
+<summary>Show details</summary>
 
 1. Download the latest release.
 2. Unzip
@@ -113,8 +121,10 @@ flowchart LR
 
 </details>
 
+### n8n
+
 <details>
-<summary><strong>n8n</strong></summary>
+<summary>Show details</summary>
 
 1. Import and configure the router and platform sub-workflows from the [n8n setup guide](n8n/README.md).
 
@@ -123,8 +133,10 @@ flowchart LR
 ## Social Media Credentials
 
 <a id="bluesky-credentials"></a>
+### Bluesky credentials
+
 <details>
-<summary><strong>Bluesky credentials</strong></summary>
+<summary>Show details</summary>
 
 The text-posting workflow does not require a Bluesky developer account, API key or client secret. It uses:
 
@@ -173,8 +185,10 @@ The current self-hosted workflow uses an app password for a single account.
 </details>
 
 <a id="linkedin-credentials"></a>
+### LinkedIn credentials
+
 <details>
-<summary><strong>LinkedIn credentials</strong></summary>
+<summary>Show details</summary>
 
 LinkedIn publishing uses an OAuth2 credential in n8n and a LinkedIn author URN
 in Obsidian settings. The credential stays in n8n; Obsidian only stores the
