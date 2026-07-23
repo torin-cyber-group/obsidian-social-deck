@@ -131,10 +131,7 @@ The text-posting workflow does not require a Bluesky developer account, API key 
 
 Do not use your primary Bluesky account password.
 
-</details>
-
-<details>
-<summary><h3>Create an app password</h3></summary>
+#### Create an app password
 
 1. Sign in to [Bluesky](https://bsky.app/) in a web browser.
 2. Open the direct [App Passwords](https://bsky.app/settings/app-passwords) page.
@@ -147,10 +144,7 @@ Do not use your primary Bluesky account password.
 
 If the password is lost or exposed, delete it from the same App Passwords page and create a replacement. Revoking this password does not change the primary account password.
 
-</details>
-
-<details>
-<summary><h3>Add the credentials to n8n</h3></summary>
+#### Add the credentials to n8n
 
 Import [`n8n/workflows/bluesky-publisher-subworkflow.json`](n8n/workflows/bluesky-publisher-subworkflow.json)
 and [`n8n/workflows/social-deck-router.json`](n8n/workflows/social-deck-router.json).
