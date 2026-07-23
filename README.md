@@ -9,6 +9,8 @@ Compose in Obsidian. Publish through n8n.
 [![Automation](https://img.shields.io/badge/automation-n8n-ea4b71)](https://n8n.io/)
 [![Bluesky](https://img.shields.io/badge/publishing-Bluesky-1185fe)](https://bsky.app/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#licence)
+[![Vibe Coded](https://shields.io)](https://github.com/danielrosehill/Vibe-Coded-Disclosure)
+
 
 [Overview](#overview) ·
 [Setup](#connect-obsidian-to-n8n) ·
