@@ -13,10 +13,10 @@ The intended experience is similar to a small social-media deck inside Obsidian:
 
 - The sidebar is the compose surface.
 - Users paste text directly into the sidebar composer.
-- Platform checkboxes live in the sidebar.
+- Platform enablement lives in plugin settings.
 - Platform character limits are checked before publishing.
 - n8n holds social-platform credentials and performs external API calls.
-- Successful posts open their public URL.
+- Successful posts show in-Obsidian feedback with the public URL.
 
 The planned platforms are Bluesky, X and LinkedIn. Only text-only Bluesky publishing is currently implemented.
 
@@ -37,25 +37,32 @@ The planned platforms are Bluesky, X and LinkedIn. Only text-only Bluesky publis
 
 - Opens Social Deck from the raven ribbon icon or the **Open Social Deck** command.
 - Provides a sidebar composer for pasted text.
-- Displays X, Bluesky and LinkedIn platform checkboxes.
+- Displays platform enablement controls in settings.
 - Keeps the current draft in memory.
-- Shows live character counts:
-  - X: 280
-  - Bluesky: 300
-  - LinkedIn: 3,000
+- Shows a live Bluesky character count.
 - Flags previews that exceed their platform limit.
 - Publishes eligible Bluesky text to the configured n8n webhook.
-- Opens the successful Bluesky URL.
+- Shows successful Bluesky feedback in Obsidian with a view link and copy button.
+- Creates Bluesky URL link facets for `http://` and `https://` URLs.
 
 ### n8n workflow
 
-`n8n/workflows/social-post-publisher.json` is an importable text-posting workflow. It:
+`n8n/workflows/social-deck-router.json` is the recommended public webhook
+workflow. It:
 
 - Accepts an `X-Social-Deck-Secret` authenticated request from Social Deck.
-- Skips platform branches whose payload keys are absent.
-- Creates a Bluesky session using the `Bluesky app password` n8n credential.
-- Includes scaffolded X and LinkedIn publishing branches for future plugin support.
-- Returns the AT Protocol URI, CID and public Bluesky URL.
+- Handles connection-test requests directly.
+- Routes Bluesky payloads to `n8n/workflows/bluesky-publisher-subworkflow.json`
+  through n8n's Execute Sub-workflow node.
+
+`n8n/workflows/bluesky-publisher-subworkflow.json` owns Bluesky credentials,
+creates a Bluesky session, creates text posts with URL link facets and returns
+the AT Protocol URI, CID and public Bluesky URL to the router.
+
+`n8n/workflows/social-post-publisher.json` remains as a multi-platform scaffold,
+but it should not be the workflow activated for current Bluesky-only publishing.
+Future X and LinkedIn support should move to separate platform workflows rather
+than reusing one large all-in-one workflow.
 
 The workflow expects a dedicated Bluesky app password. It does not require a developer API key or client secret.
 
@@ -73,7 +80,7 @@ The workflow expects a dedicated Bluesky app password. It does not require a dev
 - Scheduling
 - Retry queues or delivery history
 - Image or video uploads
-- Rich link facets
+- Link preview cards
 - Bluesky threads
 - X threads
 - Multi-account credential selection in n8n
@@ -109,13 +116,16 @@ The plugin stores the n8n webhook URL and selected SecretStorage ID in Obsidian 
 | Path | Purpose |
 |---|---|
 | `src/main.ts` | Plugin lifecycle, view registration and Bluesky publishing |
-| `src/views/social-deck-view.ts` | Sidebar composer, platform toggles and publish button |
+| `src/views/social-deck-view.ts` | Sidebar composer, publish button and publish feedback |
 | `src/services/publish-service.ts` | Authenticated request to the n8n webhook and response validation |
 | `src/platforms/definitions.ts` | Platform names, limits and intended capabilities |
-| `src/settings.ts` | n8n webhook URL, SecretStorage selector and default display label |
+| `src/settings.ts` | n8n webhook URL, SecretStorage selector, platform enablement and default display label |
 | `src/icons.ts` | Custom raven SVG registered with Obsidian |
 | `src/types/social.ts` | Shared platform and metadata types |
-| `n8n/workflows/social-post-publisher.json` | Importable conditional social-posting workflow |
+| `n8n/workflows/social-deck-router.json` | Recommended public webhook router workflow |
+| `n8n/workflows/bluesky-publisher-subworkflow.json` | Recommended Bluesky publisher sub-workflow |
+| `n8n/workflows/bluesky-post-publisher.json` | Direct Bluesky publishing fallback workflow |
+| `n8n/workflows/social-post-publisher.json` | Multi-platform scaffold for future platform work |
 | `n8n/README.md` | n8n credentials, webhook authentication and setup instructions |
 | `.github/workflows/build.yml` | Build artifact and tagged-release workflow |
 | `SECURITY.md` | Credential boundary and vulnerability reporting guidance |
@@ -155,9 +165,13 @@ Reload Obsidian and enable **Social Deck** under Community plugins.
 
 1. Create a dedicated Bluesky app password at <https://bsky.app/settings/app-passwords>.
 2. Create the `Bluesky app password` HTTP Request custom-auth credential in n8n.
-3. Import `n8n/workflows/social-post-publisher.json`.
-4. Configure the workflow's Header Auth credential as described in `n8n/README.md`.
-5. Activate the workflow.
+3. Import `n8n/workflows/bluesky-publisher-subworkflow.json`.
+4. Configure its `Bluesky app password` credential.
+5. Import `n8n/workflows/social-deck-router.json`.
+6. Set **Call Bluesky workflow** to the imported Bluesky sub-workflow ID.
+7. Configure the router workflow's Header Auth credential as described in
+   `n8n/README.md`.
+8. Activate the router workflow.
 6. Copy its production webhook URL into Social Deck settings.
 7. Create or select an Obsidian SecretStorage entry containing the matching webhook secret.
 8. Test with pasted Bluesky text no longer than 300 characters.

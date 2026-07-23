@@ -1,14 +1,70 @@
+<div align="center">
+
 # Obsidian Social Deck
+
+Compose in Obsidian. Publish through n8n. 
+
+[![Plugin status](https://img.shields.io/badge/status-active%20development-2ea44f)](#current-status)
+[![Platform](https://img.shields.io/badge/platform-Obsidian-7c3aed)](https://obsidian.md/)
+[![Automation](https://img.shields.io/badge/automation-n8n-ea4b71)](https://n8n.io/)
+[![Bluesky](https://img.shields.io/badge/publishing-Bluesky-1185fe)](https://bsky.app/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](#licence)
+
+[Overview](#overview) ·
+[Setup](#connect-obsidian-to-n8n) ·
+[n8n workflow](n8n/README.md) ·
+[Development builds](docs/installing-development-builds.md) ·
+[Security](SECURITY.md)
+
+</div>
+
+## Overview
 
 Social Deck is an Obsidian plugin for composing, previewing, scheduling and publishing social media posts through a self-hosted n8n workflow.
 
+## Table of contents
+
+- [Planned platforms](#planned-platforms)
+- [Architecture](#architecture)
+- [Current status](#current-status)
+- [Bluesky credentials](#bluesky-credentials)
+- [Connect Obsidian to n8n](#connect-obsidian-to-n8n)
+- [Development](#development)
+- [Security](#security)
+- [Licence](#licence)
+
 ## Planned platforms
 
-- X
-- Bluesky
+- Bluesky (in progress)
 - LinkedIn personal profiles and organisation pages
+- X/Twitter
 
 ## Architecture
+
+```mermaid
+flowchart LR
+    A["Obsidian<br/>Social Deck sidebar"] -->|"POST /webhook/social-deck<br/>X-Social-Deck-Secret"| B["n8n<br/>Social Deck router"]
+    A -.->|"POST /webhook-test/social-deck"| B
+
+    B -->|"testConnection: true"| C["Return connection test"]
+    B -->|"platforms.bluesky"| D["Bluesky publisher<br/>sub-workflow"]
+    B -.->|"future platforms.linkedin"| E["LinkedIn publisher<br/>sub-workflow"]
+    B -.->|"future platforms.x"| F["X/Twitter publisher<br/>sub-workflow"]
+
+    D -->|"createSession<br/>app password credential"| G["Bluesky API"]
+    D -->|"createRecord<br/>text + URL facets"| G
+    G -->|"uri, cid"| D
+    D -->|"public post URL"| B
+    B -->|"JSON result"| A
+
+    H[("n8n credentials")] -.-> D
+    H -.->|"future"| E
+    H -.->|"future"| F
+```
+
+### Requirements
+1. Obsidian
+2. An n8n instance, im using a self hosted instance.
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -17,13 +73,16 @@ credentials and handles scheduling, retries and publishing.
 ## Current status
 
 The sidebar includes a composer where you can paste post text directly and
-publish. Platform checkboxes and character counts live in the sidebar.
+publish. Platform enablement lives in plugin settings, and character counts live
+in the sidebar.
 
-Text-only Bluesky publishing is available from the plugin today. The included n8n
-workflow has conditional branches for Bluesky, X and LinkedIn, and only publishes
-platforms present in the Social Deck webhook payload. The plugin currently sends
-Bluesky posts only; X and LinkedIn plugin publishing, images, rich links and
-threads are not implemented yet.
+Text-only Bluesky publishing is available from the plugin today. The recommended
+n8n setup uses a Social Deck router workflow that calls a Bluesky publisher
+sub-workflow. The Bluesky sub-workflow publishes text posts and creates URL link
+facets. 
+
+X and LinkedIn plugin publishing, images, link preview cards and threads
+are not implemented yet.
 
 ## Bluesky credentials
 
@@ -49,7 +108,8 @@ If the password is lost or exposed, delete it from the same App Passwords page a
 
 ### Add the credentials to n8n
 
-Import [`n8n/workflows/social-post-publisher.json`](n8n/workflows/social-post-publisher.json).
+Import [`n8n/workflows/bluesky-publisher-subworkflow.json`](n8n/workflows/bluesky-publisher-subworkflow.json)
+and [`n8n/workflows/social-deck-router.json`](n8n/workflows/social-deck-router.json).
 In n8n, create an **HTTP Request → Custom Auth** credential named
 `Bluesky app password` with this JSON:
 
@@ -68,7 +128,7 @@ repository.
 
 Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
 
-The current self-hosted workflow uses an app password for a single account. A future multi-user or hosted Social Deck service should use [AT Protocol OAuth](https://docs.bsky.app/blog/oauth-atproto) instead.
+The current self-hosted workflow uses an app password for a single account. 
 
 ## Connect Obsidian to n8n
 

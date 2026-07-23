@@ -48,6 +48,10 @@ export default class SocialDeckPlugin extends Plugin {
       webhookUrl: savedSettings.webhookUrl,
       webhookTestUrl: savedSettings.webhookTestUrl,
       webhookSecretId: savedSettings.webhookSecretId,
+      enabledPlatforms: {
+        ...DEFAULT_SETTINGS.enabledPlatforms,
+        ...savedSettings.enabledPlatforms
+      },
       accountLabel: savedSettings.accountLabel
     };
 

@@ -4,13 +4,27 @@ This directory will contain importable n8n workflow JSON files and setup guidanc
 
 The Obsidian plugin will send approved post content to one authenticated n8n webhook. n8n will own social-network credentials, scheduling, retries and platform API calls. Credentials must never be committed to this repository or returned to the Obsidian vault.
 
-## Social post publishing
+## Recommended router workflow
 
-Import [`workflows/social-post-publisher.json`](workflows/social-post-publisher.json) into n8n.
+Use one public Social Deck webhook workflow as a router, then call platform
+sub-workflows from it.
 
-The workflow accepts `platforms.bluesky`, `platforms.x` and
-`platforms.linkedin` in the Social Deck webhook payload. A platform is skipped
-when its key is absent from the payload.
+Import these workflows into n8n:
+
+1. [`workflows/bluesky-publisher-subworkflow.json`](workflows/bluesky-publisher-subworkflow.json)
+2. [`workflows/social-deck-router.json`](workflows/social-deck-router.json)
+
+The router workflow keeps the public webhook stable at `/webhook/social-deck`.
+It handles **Test connection**, decides which platform workflow is needed and
+calls the platform-specific sub-workflow.
+
+The Bluesky sub-workflow owns Bluesky credentials, creates a session, creates a
+text post with URL link facets and returns the public Bluesky URL to the router.
+
+[`workflows/bluesky-post-publisher.json`](workflows/bluesky-post-publisher.json)
+is still available as a direct Bluesky-only fallback. Use
+[`workflows/social-post-publisher.json`](workflows/social-post-publisher.json)
+only as the older multi-platform scaffold.
 
 ### 1. Configure the Bluesky credential
 
@@ -31,31 +45,41 @@ put the handle or app password into the workflow JSON.
 }
 ```
 
-5. Open the imported **Create Bluesky session** HTTP Request node.
+5. Open **Create Bluesky session** in the imported **Social Deck - Bluesky
+   publisher sub-workflow**.
 6. In **Authentication**, select **Generic Credential Type**.
 7. In **Generic Auth Type**, select **Custom Auth**.
 8. Select the `Bluesky app password` credential.
 
-### 2. Configure X and LinkedIn credentials
+### 2. Connect the router to the Bluesky sub-workflow
 
-The X and LinkedIn nodes are included but only run when their platform payloads
-are present.
+1. Save the **Social Deck - Bluesky publisher sub-workflow**.
+2. Copy its n8n workflow ID from the workflow URL. It is the value after
+   `/workflow/`.
+3. Open **Social Deck - router**.
+4. Open **Call Bluesky workflow**.
+5. Replace `REPLACE_WITH_N8N_BLUESKY_SUB_WORKFLOW_ID` with the copied workflow
+   ID.
+6. Save the router workflow.
 
-For X, open **Create X post** and select an OAuth2 credential with permission to
-create posts for the target account.
+### 3. X and LinkedIn workflows
 
-For LinkedIn, open **Create LinkedIn post** and select an OAuth2 credential with
-permission to create UGC posts. The workflow expects
-`platforms.linkedin.authorUrn` in the payload, or you must replace the placeholder
-`urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID` in the **Validate request** node.
+X and LinkedIn should be split into separate workflows when those plugin
+features are implemented. Keeping each platform in its own workflow avoids
+activation problems caused by missing credentials for platforms you are not
+using yet.
 
-### 3. Secure the webhook
+The older multi-platform workflow remains in this repository as a scaffold, but
+the router workflow is the one to activate now.
+
+### 4. Secure the webhook
 
 1. Create an n8n **Header Auth** credential.
 2. Set the header name to `X-Social-Deck-Secret`.
 3. Set its value to a long random secret.
-4. Open the **Social Deck webhook** node and select that credential.
-5. Save and activate the workflow.
+4. Open the **Social Deck webhook** node in **Social Deck - router** and select
+   that credential.
+5. Save and activate the router workflow.
 
 Enter the same random secret in an Obsidian SecretStorage entry selected from
 Social Deck's **n8n webhook secret** setting.
@@ -72,7 +96,7 @@ To create one on Linux or macOS:
 openssl rand -base64 32
 ```
 
-### 4. Configure Social Deck
+### 5. Configure Social Deck
 
 Copy the production URL from the webhook node into Social Deck's **n8n webhook URL** setting. It normally ends with `/webhook/social-deck`. Use the production URL, not the test URL, and make sure the workflow is active.
 
@@ -157,7 +181,8 @@ curl -X POST "https://n8n.example.com/webhook/social-deck" \
   }'
 ```
 
-A successful Obsidian publish shows a notice and opens the returned Bluesky URL.
+A successful Obsidian publish shows a notice and displays the returned Bluesky
+URL in the Social Deck sidebar.
 
 ### Troubleshooting
 
@@ -171,6 +196,12 @@ The most common causes are:
   test event**.
 - The webhook URL points to the n8n editor, login page or another proxy page.
 - The **Social Deck webhook** node is missing the Header Auth credential.
+- **Call Bluesky workflow** still contains
+  `REPLACE_WITH_N8N_BLUESKY_SUB_WORKFLOW_ID`.
+- **Create Bluesky session** in the Bluesky sub-workflow is missing the
+  `Bluesky app password` credential.
+- A direct Bluesky or older multi-platform workflow is active on the same
+  `/social-deck` webhook path as the router.
 - The Header Auth name or value does not match Obsidian. The header name must be
   `X-Social-Deck-Secret`, and the value must be the same random secret selected
   in Social Deck's **n8n webhook secret** setting.
@@ -184,5 +215,6 @@ then run **Test connection** again. Failed n8n requests log the mode, URL, HTTP
 status, response content type and a short response preview. The webhook secret is
 not logged.
 
-This first workflow supports text-only posts. It does not yet create rich link
-facets, upload images or publish threads.
+The current Bluesky sub-workflow supports text-only posts and creates Bluesky URL
+link facets. It does not yet create link preview cards, upload images or publish
+threads.

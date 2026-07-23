@@ -54,11 +54,14 @@ export async function publishBlueskyPost(
     "publish"
   );
 
-  if (!isBlueskyResult(responseJson)) {
+  const result = extractBlueskyResult(responseJson);
+
+  if (!result) {
+    console.error("Social Deck n8n returned unexpected publish payload", responseJson);
     throw new Error("n8n returned an unexpected JSON response");
   }
 
-  return responseJson;
+  return result;
 }
 
 export async function testN8nConnection(
@@ -140,6 +143,27 @@ function isBlueskyResult(value: unknown): value is BlueskyPublishResult {
     typeof result.uri === "string" &&
     typeof result.cid === "string" &&
     typeof result.url === "string"
+  );
+}
+
+function extractBlueskyResult(value: unknown): BlueskyPublishResult | undefined {
+  if (isBlueskyResult(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(extractBlueskyResult).find((result) => result !== undefined);
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    extractBlueskyResult(record.json) ??
+    extractBlueskyResult(record.data) ??
+    extractBlueskyResult(record.result)
   );
 }
 

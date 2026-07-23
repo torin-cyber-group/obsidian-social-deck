@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    connectionTest: true,\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nif (blueskyText !== undefined) {\n  enabled.bluesky = { enabled: true, text: blueskyText };\n} else {\n  enabled.bluesky = { enabled: false };\n}\n\nconst xText = parseText('x', 280);\nif (xText !== undefined) {\n  enabled.x = {\n    enabled: true,\n    text: xText,\n    username: typeof platforms.x?.username === 'string' ? platforms.x.username.trim().replace(/^@/, '') : undefined\n  };\n} else {\n  enabled.x = { enabled: false };\n}\n\nconst linkedinText = parseText('linkedin', 3000);\nif (linkedinText !== undefined) {\n  enabled.linkedin = {\n    enabled: true,\n    text: linkedinText,\n    authorUrn: typeof platforms.linkedin?.authorUrn === 'string' && platforms.linkedin.authorUrn.trim()\n      ? platforms.linkedin.authorUrn.trim()\n      : 'urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID'\n  };\n} else {\n  enabled.linkedin = { enabled: false };\n}\n\nif (!enabled.bluesky.enabled && !enabled.x.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  connectionTest: false,\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  results: []\n} }];"
+        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    connectionTest: true,\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nfunction utf8Index(text, utf16Index) {\n  const value = text.slice(0, utf16Index);\n  if (typeof TextEncoder !== 'undefined') {\n    return new TextEncoder().encode(value).byteLength;\n  }\n  if (typeof Buffer !== 'undefined') {\n    return Buffer.byteLength(value, 'utf8');\n  }\n  return unescape(encodeURIComponent(value)).length;\n}\n\nfunction parseUrlFacets(text) {\n  const facets = [];\n  const urlPattern = /https?:\\/\\/[^\\s<>\"']+/g;\n  let match;\n\n  while ((match = urlPattern.exec(text)) !== null) {\n    const uri = match[0].replace(/[),.!?;:]+$/g, '');\n    if (!/^https?:\\/\\//.test(uri)) {\n      continue;\n    }\n\n    const start = match.index;\n    const end = start + uri.length;\n    facets.push({\n      index: {\n        byteStart: utf8Index(text, start),\n        byteEnd: utf8Index(text, end)\n      },\n      features: [\n        {\n          $type: 'app.bsky.richtext.facet#link',\n          uri\n        }\n      ]\n    });\n  }\n\n  return facets;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nif (blueskyText !== undefined) {\n  enabled.bluesky = {\n    enabled: true,\n    text: blueskyText,\n    facets: parseUrlFacets(blueskyText)\n  };\n} else {\n  enabled.bluesky = { enabled: false };\n}\n\nconst xText = parseText('x', 280);\nif (xText !== undefined) {\n  enabled.x = {\n    enabled: true,\n    text: xText,\n    username: typeof platforms.x?.username === 'string' ? platforms.x.username.trim().replace(/^@/, '') : undefined\n  };\n} else {\n  enabled.x = { enabled: false };\n}\n\nconst linkedinText = parseText('linkedin', 3000);\nif (linkedinText !== undefined) {\n  enabled.linkedin = {\n    enabled: true,\n    text: linkedinText,\n    authorUrn: typeof platforms.linkedin?.authorUrn === 'string' && platforms.linkedin.authorUrn.trim()\n      ? platforms.linkedin.authorUrn.trim()\n      : 'urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID'\n  };\n} else {\n  enabled.linkedin = { enabled: false };\n}\n\nif (!enabled.bluesky.enabled && !enabled.x.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  connectionTest: false,\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  results: []\n} }];"
       },
       "id": "a6b6b8be-158a-45a5-a855-312dc0e93f87",
       "name": "Validate request",
@@ -154,7 +154,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ repo: $json.did, collection: 'app.bsky.feed.post', record: { '$type': 'app.bsky.feed.post', text: $('Validate request').first().json.platforms.bluesky.text, createdAt: $now.toUTC().toISO(), langs: ['en'] } }) }}",
+        "body": "={{ JSON.stringify((() => {\n  const bluesky = $('Validate request').first().json.platforms.bluesky;\n  const record = {\n    '$type': 'app.bsky.feed.post',\n    text: bluesky.text,\n    createdAt: $now.toUTC().toISO(),\n    langs: ['en']\n  };\n  if (Array.isArray(bluesky.facets) && bluesky.facets.length > 0) {\n    record.facets = bluesky.facets;\n  }\n  return {\n    repo: $json.did,\n    collection: 'app.bsky.feed.post',\n    record\n  };\n})()) }}",
         "options": {}
       },
       "id": "051d55fc-63e1-4db8-8932-063a1f0465e4",
@@ -233,12 +233,7 @@
         1680,
         -180
       ],
-      "credentials": {
-        "oAuth2Api": {
-          "id": "REPLACE_WITH_N8N_X_OAUTH2_CREDENTIAL_ID",
-          "name": "X OAuth2 user context"
-        }
-      }
+      "disabled": true
     },
     {
       "parameters": {
@@ -322,12 +317,7 @@
         2400,
         -180
       ],
-      "credentials": {
-        "oAuth2Api": {
-          "id": "REPLACE_WITH_N8N_LINKEDIN_OAUTH2_CREDENTIAL_ID",
-          "name": "LinkedIn OAuth2"
-        }
-      }
+      "disabled": true
     },
     {
       "parameters": {

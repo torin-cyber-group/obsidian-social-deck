@@ -2,13 +2,18 @@ import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { RAVEN_ICON } from "../icons";
 import { PLATFORM_DEFINITIONS } from "../platforms/definitions";
 import type SocialDeckPlugin from "../main";
-import type { SocialPlatform } from "../types/social";
 
 export const SOCIAL_DECK_VIEW_TYPE = "social-deck-view";
 
+interface PublishFeedback {
+  platformName: string;
+  publishedAt: string;
+  url: string;
+}
+
 export class SocialDeckView extends ItemView {
   private postText = "";
-  private platforms: SocialPlatform[] = ["bluesky"];
+  private publishFeedback: PublishFeedback | undefined;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: SocialDeckPlugin) {
     super(leaf);
@@ -35,8 +40,9 @@ export class SocialDeckView extends ItemView {
     container.empty();
     container.addClass("social-deck");
 
-    container.createEl("h2", { text: "Social Deck" });
-    this.renderComposer(container);
+    const content = container.createDiv({ cls: "social-deck__content" });
+    content.createEl("h2", { text: "Social Deck" });
+    this.renderComposer(content);
   }
 
   private renderComposer(container: Element): void {
@@ -47,6 +53,10 @@ export class SocialDeckView extends ItemView {
     identity.createEl("small", { text: "Paste text here to publish" });
     const blueskyDefinition = PLATFORM_DEFINITIONS.bluesky;
     const count = header.createEl("span", { cls: "social-deck__character-count" });
+
+    if (this.publishFeedback) {
+      this.renderPublishFeedback(section, this.publishFeedback);
+    }
 
     const textarea = section.createEl("textarea", {
       cls: "social-deck__editor",
@@ -59,37 +69,8 @@ export class SocialDeckView extends ItemView {
     });
     textarea.value = this.postText;
 
-    const selector = section.createDiv({ cls: "social-deck__platform-selector" });
-    selector.createEl("span", { cls: "social-deck__section-label", text: "Publish to" });
-    const controls = selector.createDiv({ cls: "social-deck__platform-toggles" });
-
-    for (const definition of Object.values(PLATFORM_DEFINITIONS)) {
-      const label = controls.createEl("label", { cls: "social-deck__platform-toggle" });
-      const checkbox = label.createEl("input", {
-        type: "checkbox",
-        attr: { "aria-label": `Publish to ${definition.name}` }
-      });
-      checkbox.checked = this.platforms.includes(definition.id);
-      checkbox.disabled = definition.id !== "bluesky";
-      label.createEl("span", {
-        text: definition.id === "bluesky" ? definition.name : `${definition.name} planned`
-      });
-
-      checkbox.addEventListener("change", () => {
-        this.platforms = Object.values(PLATFORM_DEFINITIONS)
-          .filter((platform) => {
-            const input = controls.querySelector<HTMLInputElement>(
-              `input[aria-label="Publish to ${platform.name}"]`
-            );
-            return input?.checked;
-          })
-          .map((platform) => platform.id);
-        updateCount();
-      });
-    }
-
     const footer = section.createDiv({ cls: "social-deck__platform-footer" });
-    footer.createEl("small", { text: "Text-only Bluesky publishing is available" });
+    const footerStatus = footer.createEl("small");
     const actions = footer.createDiv({ cls: "social-deck__platform-actions" });
     const clearButton = actions.createEl("button", { text: "Clear" });
     const publishButton = actions.createEl("button", {
@@ -100,9 +81,12 @@ export class SocialDeckView extends ItemView {
     const updateCount = (): void => {
       const length = [...textarea.value].length;
       const overLimit = length > blueskyDefinition.characterLimit;
-      const blueskyEnabled = this.platforms.includes("bluesky");
+      const blueskyEnabled = this.plugin.settings.enabledPlatforms.bluesky;
       const missingConfiguration =
         !this.plugin.settings.webhookUrl || !this.plugin.getWebhookSecret();
+      footerStatus.textContent = blueskyEnabled
+        ? "Text-only Bluesky publishing is available"
+        : "Enable Bluesky in Social Deck settings to publish";
       count.textContent = `${length.toLocaleString()} / ${blueskyDefinition.characterLimit.toLocaleString()}`;
       count.toggleClass("social-deck__character-count--over", overLimit);
       textarea.toggleClass("social-deck__editor--over", overLimit);
@@ -133,8 +117,12 @@ export class SocialDeckView extends ItemView {
       textarea.disabled = true;
       try {
         const result = await this.plugin.publishBlueskyText(textarea.value);
+        this.publishFeedback = {
+          platformName: "Bluesky",
+          publishedAt: new Date().toLocaleString(),
+          url: result.url
+        };
         new Notice("Published to Bluesky");
-        window.open(result.url, "_blank", "noopener,noreferrer");
         this.postText = "";
         await this.refresh();
       } catch (error) {
@@ -146,5 +134,27 @@ export class SocialDeckView extends ItemView {
     });
 
     updateCount();
+  }
+
+  private renderPublishFeedback(container: Element, feedback: PublishFeedback): void {
+    const status = container.createDiv({ cls: "social-deck__publish-feedback" });
+    const message = status.createDiv();
+    message.createEl("strong", { text: `Posted to ${feedback.platformName}` });
+    message.createEl("small", { text: feedback.publishedAt });
+
+    const actions = status.createDiv({ cls: "social-deck__publish-feedback-actions" });
+    actions.createEl("a", {
+      text: "View post",
+      href: feedback.url,
+      attr: {
+        target: "_blank",
+        rel: "noopener noreferrer"
+      }
+    });
+    const copyButton = actions.createEl("button", { text: "Copy URL" });
+    copyButton.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(feedback.url);
+      new Notice("Bluesky URL copied");
+    });
   }
 }

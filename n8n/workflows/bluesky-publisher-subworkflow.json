@@ -1,0 +1,144 @@
+{
+  "name": "Social Deck - Bluesky publisher sub-workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "679847b3-cea7-4c32-9779-07a388004279",
+      "name": "When executed by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.bluesky?.text;\nif (typeof text !== 'string' || text.trim().length === 0) {\n  throw new Error('Bluesky text is required');\n}\nif ([...text].length > 300) {\n  throw new Error('Bluesky text exceeds 300 characters');\n}\n\nfunction utf8Index(value, utf16Index) {\n  const prefix = value.slice(0, utf16Index);\n  if (typeof TextEncoder !== 'undefined') {\n    return new TextEncoder().encode(prefix).byteLength;\n  }\n  if (typeof Buffer !== 'undefined') {\n    return Buffer.byteLength(prefix, 'utf8');\n  }\n  return unescape(encodeURIComponent(prefix)).length;\n}\n\nfunction parseUrlFacets(value) {\n  const facets = [];\n  const urlPattern = /https?:\\/\\/[^\\s<>\"']+/g;\n  let match;\n\n  while ((match = urlPattern.exec(value)) !== null) {\n    const uri = match[0].replace(/[),.!?;:]+$/g, '');\n    if (!/^https?:\\/\\//.test(uri)) {\n      continue;\n    }\n\n    const start = match.index;\n    const end = start + uri.length;\n    facets.push({\n      index: {\n        byteStart: utf8Index(value, start),\n        byteEnd: utf8Index(value, end)\n      },\n      features: [\n        {\n          $type: 'app.bsky.richtext.facet#link',\n          uri\n        }\n      ]\n    });\n  }\n\n  return facets;\n}\n\nreturn [{ json: {\n  ...$json,\n  bluesky: {\n    text,\n    facets: parseUrlFacets(text)\n  }\n} }];"
+      },
+      "id": "5285b7f0-b156-496b-89a6-08355304b489",
+      "name": "Prepare Bluesky post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "9d196370-7e2f-45d7-8a92-14162f8199b4",
+      "name": "Create Bluesky session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.accessJwt }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify((() => {\n  const bluesky = $('Prepare Bluesky post').first().json.bluesky;\n  const record = {\n    '$type': 'app.bsky.feed.post',\n    text: bluesky.text,\n    createdAt: $now.toUTC().toISO(),\n    langs: ['en']\n  };\n  if (Array.isArray(bluesky.facets) && bluesky.facets.length > 0) {\n    record.facets = bluesky.facets;\n  }\n  return {\n    repo: $json.did,\n    collection: 'app.bsky.feed.post',\n    record\n  };\n})()) }}",
+        "options": {}
+      },
+      "id": "30f1df51-3a02-477b-86f2-26600a521ded",
+      "name": "Create Bluesky post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const session = $('Create Bluesky session').first().json;\nconst post = $json;\nconst rkey = typeof post.uri === 'string' ? post.uri.split('/').pop() : undefined;\nreturn [{ json: {\n  ok: true,\n  platform: 'bluesky',\n  uri: post.uri,\n  cid: post.cid,\n  url: session.handle && rkey ? 'https://bsky.app/profile/' + session.handle + '/post/' + rkey : undefined\n} }];"
+      },
+      "id": "be2dc61e-830e-4e7b-97cb-ea0ee4d9f271",
+      "name": "Record Bluesky result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When executed by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bluesky post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bluesky post": {
+      "main": [
+        [
+          {
+            "node": "Create Bluesky session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bluesky session": {
+      "main": [
+        [
+          {
+            "node": "Create Bluesky post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bluesky post": {
+      "main": [
+        [
+          {
+            "node": "Record Bluesky result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c8021985-5554-47a5-a97d-3eb7fb6f9543",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "social-deck-bluesky-publisher-sub-workflow",
+  "tags": []
+}

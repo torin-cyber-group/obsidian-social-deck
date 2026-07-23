@@ -1,0 +1,178 @@
+{
+  "name": "Social Deck - router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-deck",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2a1d448d-fcaf-49d5-92f1-c7667697764b",
+      "name": "Social Deck webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "social-deck"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    route: 'connection-test',\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nif (blueskyText !== undefined) {\n  return [{ json: {\n    route: 'bluesky',\n    source: body.source ?? {},\n    requestedAt: body.requestedAt ?? null,\n    bluesky: {\n      text: blueskyText\n    }\n  } }];\n}\n\nthrow new Error('No supported Social Deck platforms were enabled');"
+      },
+      "id": "18797a7f-350b-4738-afaf-a0fe25d11d7c",
+      "name": "Route request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "789018a4-3bde-4cad-a5f8-91de7ec9f718",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "connection-test",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "beb81a25-2dd1-43f0-8e0a-34d3c3ed37e5",
+      "name": "If connection test",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {}
+      },
+      "id": "7a1e71bd-b3c4-42b4-9d33-457ddc00ea42",
+      "name": "Return connection test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        720,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "REPLACE_WITH_N8N_BLUESKY_SUB_WORKFLOW_ID",
+        "source": "database",
+        "mode": "once"
+      },
+      "id": "76afe24d-de74-48e0-b99d-e006ebfbca99",
+      "name": "Call Bluesky workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        720,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.json ?? $json.data ?? $json.result ?? $json }}",
+        "options": {}
+      },
+      "id": "38763cd3-c5e4-44af-b93c-cd2df1fffd3b",
+      "name": "Return platform result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        960,
+        120
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Social Deck webhook": {
+      "main": [
+        [
+          {
+            "node": "Route request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route request": {
+      "main": [
+        [
+          {
+            "node": "If connection test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If connection test": {
+      "main": [
+        [
+          {
+            "node": "Return connection test",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Bluesky workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Bluesky workflow": {
+      "main": [
+        [
+          {
+            "node": "Return platform result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "aaf971c8-6d4f-4e5f-b4f0-b7701c4f2cc5",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "social-deck-router",
+  "tags": []
+}

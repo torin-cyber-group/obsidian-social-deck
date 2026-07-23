@@ -1,68 +1,64 @@
 .social-deck {
-  padding: var(--size-4-3);
+  box-sizing: border-box;
 }
 
-.social-deck__header,
+.social-deck__content {
+  box-sizing: border-box;
+  padding: var(--size-4-5);
+  width: 100%;
+}
+
+.social-deck__content > h2 {
+  margin: 0 0 var(--size-4-5);
+}
+
 .social-deck__platform-header,
 .social-deck__platform-footer {
   align-items: center;
   display: flex;
 }
 
-.social-deck__header,
 .social-deck__platform-header,
 .social-deck__platform-footer {
   justify-content: space-between;
 }
 
-.social-deck__header h2 {
-  margin-bottom: 0;
-}
-
-.social-deck__header small,
 .social-deck__platform-header small {
   color: var(--text-muted);
   display: block;
   margin-top: var(--size-2-1);
 }
 
-.social-deck__platform-selector {
-  margin: var(--size-4-4) 0;
+.social-deck__publish-feedback {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--color-green);
+  border-radius: var(--radius-s);
+  display: flex;
+  gap: var(--size-4-3);
+  justify-content: space-between;
+  margin: var(--size-4-3) 0;
+  padding: var(--size-4-2) var(--size-4-3);
 }
 
-.social-deck__section-label {
+.social-deck__publish-feedback small {
   color: var(--text-muted);
   display: block;
   font-size: var(--font-ui-smaller);
-  margin-bottom: var(--size-4-2);
+  margin-top: var(--size-2-1);
 }
 
-.social-deck__platform-toggles {
+.social-deck__publish-feedback-actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-4-2);
+  justify-content: flex-end;
 }
 
-.social-deck__platform-toggle {
-  align-items: center;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  cursor: pointer;
-  display: inline-flex;
-  gap: var(--size-4-2);
-  padding: var(--size-4-2) var(--size-4-3);
-  user-select: none;
-}
-
-.social-deck__platform-toggle:has(input:checked) {
-  background: var(--interactive-accent);
-  border-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.social-deck__platform-toggle input {
-  margin: 0;
+.social-deck__publish-feedback-actions button,
+.social-deck__publish-feedback-actions a {
+  font-size: var(--font-ui-smaller);
 }
 
 .social-deck__composer {

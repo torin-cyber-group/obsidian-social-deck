@@ -38,4 +38,5 @@ To update an existing development installation, replace the same three files and
 ## Test with the example note
 
 Open Social Deck from the command palette or ribbon. Paste text into the sidebar
-composer; Social Deck should display platform controls and a character count.
+composer; Social Deck should display a character count. Platform controls are in
+**Settings → Community plugins → Social Deck**.

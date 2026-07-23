@@ -1,10 +1,13 @@
 import { App, Notice, PluginSettingTab, SecretComponent, Setting } from "obsidian";
 import type SocialDeckPlugin from "./main";
+import { PLATFORM_DEFINITIONS } from "./platforms/definitions";
+import type { SocialPlatform } from "./types/social";
 
 export interface SocialDeckSettings {
   webhookUrl: string;
   webhookTestUrl: string;
   webhookSecretId: string;
+  enabledPlatforms: Record<SocialPlatform, boolean>;
   accountLabel: string;
 }
 
@@ -12,6 +15,11 @@ export const DEFAULT_SETTINGS: SocialDeckSettings = {
   webhookUrl: "",
   webhookTestUrl: "",
   webhookSecretId: "",
+  enabledPlatforms: {
+    x: false,
+    bluesky: true,
+    linkedin: false
+  },
   accountLabel: "Default"
 };
 
@@ -81,6 +89,28 @@ export class SocialDeckSettingTab extends PluginSettingTab {
           }
         })
       );
+
+    new Setting(containerEl).setName("Enabled platforms").setHeading();
+
+    for (const definition of Object.values(PLATFORM_DEFINITIONS)) {
+      const isAvailable = definition.id === "bluesky";
+      new Setting(containerEl)
+        .setName(isAvailable ? definition.name : `${definition.name} planned`)
+        .setDesc(
+          isAvailable
+            ? "Show Bluesky publishing in the composer."
+            : "This platform is included in the n8n workflow, but Obsidian publishing controls are not enabled yet."
+        )
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.enabledPlatforms[definition.id])
+            .setDisabled(!isAvailable)
+            .onChange(async (value) => {
+              this.plugin.settings.enabledPlatforms[definition.id] = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    }
 
     new Setting(containerEl)
       .setName("Default account label")
