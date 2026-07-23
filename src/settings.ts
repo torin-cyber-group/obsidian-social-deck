@@ -65,7 +65,7 @@ export class SocialDeckSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Test n8n connection")
-      .setDesc("Sends a connection check to the configured webhook without publishing to any social platform.")
+      .setDesc("Sends a connection check to the configured webhook without publishing. Failed checks write details to the developer console.")
       .addButton((button) =>
         button.setButtonText("Test connection").onClick(async () => {
           button.setDisabled(true);

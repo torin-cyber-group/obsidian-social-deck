@@ -21,6 +21,15 @@ export interface N8nConnectionTestResult {
   source: "n8n";
 }
 
+interface N8nFailureDetails {
+  mode: "publish" | "test";
+  url: string;
+  expectedPath: string;
+  status: number;
+  contentType: string;
+  bodyPreview: string;
+}
+
 export async function publishBlueskyPost(
   webhookUrl: string,
   webhookSecret: string,
@@ -110,11 +119,11 @@ async function sendSocialDeckRequest(
 
   if (response.status < 200 || response.status >= 300) {
     const message = extractErrorMessage(responseJson);
-    throw new Error(message ?? describeUnexpectedResponse(response, mode));
+    throwLoggedError(message ?? describeUnexpectedResponse(response, mode), response, webhookUrl, mode);
   }
 
   if (!responseJson) {
-    throw new Error(describeUnexpectedResponse(response, mode));
+    throwLoggedError(describeUnexpectedResponse(response, mode), response, webhookUrl, mode);
   }
 
   return responseJson;
@@ -186,4 +195,36 @@ function describeUnexpectedResponse(response: RequestUrlResponse, mode: "publish
 
 function truncateBody(body: string): string {
   return body.length > 180 ? `${body.slice(0, 180)}...` : body;
+}
+
+function throwLoggedError(
+  message: string,
+  response: RequestUrlResponse,
+  webhookUrl: string,
+  mode: "publish" | "test"
+): never {
+  console.error("Social Deck n8n request failed", buildFailureDetails(response, webhookUrl, mode));
+  throw new Error(message);
+}
+
+function buildFailureDetails(
+  response: RequestUrlResponse,
+  webhookUrl: string,
+  mode: "publish" | "test"
+): N8nFailureDetails {
+  const expectedPath = mode === "test" ? "/webhook-test/social-deck" : "/webhook/social-deck";
+  return {
+    mode,
+    url: webhookUrl.trim(),
+    expectedPath,
+    status: response.status,
+    contentType: findHeader(response.headers, "content-type") ?? "unknown",
+    bodyPreview: truncateBody(response.text.trim().replace(/\s+/g, " "))
+  };
+}
+
+function findHeader(headers: Record<string, string>, name: string): string | undefined {
+  const lowerName = name.toLowerCase();
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === lowerName);
+  return entry?.[1];
 }

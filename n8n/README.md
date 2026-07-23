@@ -178,5 +178,11 @@ The most common causes are:
 Run the `curl` smoke test above against the exact URL configured in Obsidian. A
 working webhook returns JSON, not HTML.
 
+For more detail from Obsidian, open the developer console with
+`Ctrl+Shift+I` on Windows/Linux or `Cmd+Option+I` on macOS, select **Console**,
+then run **Test connection** again. Failed n8n requests log the mode, URL, HTTP
+status, response content type and a short response preview. The webhook secret is
+not logged.
+
 This first workflow supports text-only posts. It does not yet create rich link
 facets, upload images or publish threads.
