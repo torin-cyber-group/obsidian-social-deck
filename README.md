@@ -14,7 +14,9 @@ Obsidian remains the source of truth for content and publication status. The plu
 
 ## Current status
 
-The plugin can read the active Markdown note, parse its `social-*` frontmatter and show separate editable previews for X, Bluesky and LinkedIn. Each platform can be enabled or disabled from the sidebar; the selection is saved to the note's `social-platforms` frontmatter. Each preview has a live platform-specific character count and over-limit warning. Preview edits remain in memory and are not written back to the note yet. Publishing is not implemented.
+The plugin can read the active Markdown note, parse its `social-*` frontmatter and show separate editable previews for X, Bluesky and LinkedIn. Each platform can be enabled or disabled from the sidebar; the selection is saved to the note's `social-platforms` frontmatter. Each preview has a live platform-specific character count and over-limit warning. Preview edits remain in memory and are not written back to the note yet.
+
+Text-only Bluesky publishing is available through the included n8n workflow. Bluesky credentials remain in n8n, and the resulting public post URL is written back to the note. X and LinkedIn publishing, images, rich links and threads are not implemented yet.
 
 ### Post frontmatter
 

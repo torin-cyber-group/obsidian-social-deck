@@ -1,0 +1,108 @@
+{
+  "name": "Social Deck - Bluesky text post",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-deck",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0288e134-d45b-497a-a0ca-199173098c10",
+      "name": "Social Deck webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "social-deck"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst text = body.platforms?.bluesky?.text;\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\nif (typeof text !== 'string' || text.trim().length === 0) {\n  throw new Error('Bluesky text is required');\n}\nif ([...text].length > 300) {\n  throw new Error('Bluesky text exceeds 300 characters');\n}\n\nreturn [{ json: {\n  text,\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null\n} }];"
+      },
+      "id": "a6b6b8be-158a-45a5-a855-312dc0e93f87",
+      "name": "Validate request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ identifier: $env.BLUESKY_HANDLE, password: $env.BLUESKY_APP_PASSWORD }) }}",
+        "options": {}
+      },
+      "id": "cebe500a-7fcf-4778-a669-b9f30b0b1367",
+      "name": "Create Bluesky session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.accessJwt }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ repo: $json.did, collection: 'app.bsky.feed.post', record: { '$type': 'app.bsky.feed.post', text: $('Validate request').item.json.text, createdAt: $now.toUTC().toISO(), langs: ['en'] } }) }}",
+        "options": {}
+      },
+      "id": "051d55fc-63e1-4db8-8932-063a1f0465e4",
+      "name": "Create Bluesky post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, platform: 'bluesky', uri: $json.uri, cid: $json.cid, url: 'https://bsky.app/profile/' + $('Create Bluesky session').item.json.handle + '/post/' + $json.uri.split('/').pop() } }}",
+        "options": {}
+      },
+      "id": "fb2e0888-8376-4e57-9d57-11149bd09d5a",
+      "name": "Return published post",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [960, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Social Deck webhook": {
+      "main": [[{ "node": "Validate request", "type": "main", "index": 0 }]]
+    },
+    "Validate request": {
+      "main": [[{ "node": "Create Bluesky session", "type": "main", "index": 0 }]]
+    },
+    "Create Bluesky session": {
+      "main": [[{ "node": "Create Bluesky post", "type": "main", "index": 0 }]]
+    },
+    "Create Bluesky post": {
+      "main": [[{ "node": "Return published post", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e11c03a8-8f27-4c95-975d-7bb03be0164f",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
+

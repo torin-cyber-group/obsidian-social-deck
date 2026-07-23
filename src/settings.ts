@@ -3,11 +3,13 @@ import type SocialDeckPlugin from "./main";
 
 export interface SocialDeckSettings {
   webhookUrl: string;
+  webhookSecret: string;
   accountLabel: string;
 }
 
 export const DEFAULT_SETTINGS: SocialDeckSettings = {
   webhookUrl: "",
+  webhookSecret: "",
   accountLabel: "Default"
 };
 
@@ -35,6 +37,20 @@ export class SocialDeckSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("n8n webhook secret")
+      .setDesc("Bearer token required by the n8n webhook. This is not a social-network password.")
+      .addText((text) => {
+        text.inputEl.type = "password";
+        text
+          .setPlaceholder("A long random value")
+          .setValue(this.plugin.settings.webhookSecret)
+          .onChange(async (value) => {
+            this.plugin.settings.webhookSecret = value.trim();
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName("Default account label")
       .setDesc("A display label only. Social network credentials remain in n8n.")
       .addText((text) =>
@@ -45,4 +61,3 @@ export class SocialDeckSettingTab extends PluginSettingTab {
       );
   }
 }
-

@@ -143,12 +143,55 @@ export class SocialDeckView extends ItemView {
       });
       textarea.value = this.drafts[platformId] ?? note.content;
 
+      const footer = card.createDiv({ cls: "social-deck__platform-footer" });
+      if (definition.supportsThreads) {
+        footer.createEl("small", { text: "Thread support planned" });
+      }
+      const actions = footer.createDiv({ cls: "social-deck__platform-actions" });
+      const resetButton = actions.createEl("button", { text: "Reset from note" });
+      let publishButton: HTMLButtonElement | undefined;
+      if (platformId === "bluesky") {
+        publishButton = actions.createEl("button", {
+          cls: "mod-cta",
+          text: "Publish to Bluesky"
+        });
+        publishButton.addEventListener("click", async () => {
+          if (!publishButton) {
+            return;
+          }
+          publishButton.disabled = true;
+          publishButton.textContent = "Publishing…";
+          textarea.disabled = true;
+          try {
+            const result = await this.plugin.publishBluesky(file, textarea.value);
+            new Notice("Published to Bluesky");
+            window.open(result.url, "_blank", "noopener,noreferrer");
+            await this.refresh();
+          } catch (error) {
+            new Notice(`Bluesky publishing failed: ${error instanceof Error ? error.message : String(error)}`);
+            textarea.disabled = false;
+            publishButton.textContent = "Publish to Bluesky";
+            updateCount();
+          }
+        });
+      }
+
       const updateCount = (): void => {
         const length = [...textarea.value].length;
         const overLimit = length > definition.characterLimit;
         count.textContent = `${length.toLocaleString()} / ${definition.characterLimit.toLocaleString()}`;
         count.toggleClass("social-deck__character-count--over", overLimit);
         textarea.toggleClass("social-deck__editor--over", overLimit);
+        if (publishButton) {
+          const missingConfiguration =
+            !this.plugin.settings.webhookUrl || !this.plugin.settings.webhookSecret;
+          publishButton.disabled = length === 0 || overLimit || missingConfiguration;
+          publishButton.title = missingConfiguration
+            ? "Configure the n8n webhook URL and secret in Social Deck settings"
+            : overLimit
+              ? `Bluesky posts must be ${definition.characterLimit} characters or fewer`
+              : "Publish this text to Bluesky";
+        }
       };
 
       textarea.addEventListener("input", () => {
@@ -157,11 +200,6 @@ export class SocialDeckView extends ItemView {
       });
       updateCount();
 
-      const footer = card.createDiv({ cls: "social-deck__platform-footer" });
-      if (definition.supportsThreads) {
-        footer.createEl("small", { text: "Thread support planned" });
-      }
-      const resetButton = footer.createEl("button", { text: "Reset from note" });
       resetButton.addEventListener("click", () => {
         textarea.value = note.content;
         this.drafts[platformId] = note.content;
