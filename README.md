@@ -104,6 +104,10 @@ Every successful GitHub Actions build on `main` produces an installable `social-
 
 Tags matching `v*` also create a GitHub release containing the installable ZIP.
 
+### Continuing development with Codex
+
+See the [Codex project hand-off](docs/CODEX_HANDOFF.md) for the implemented architecture, current limitations, security constraints and recommended next work.
+
 ## Security
 
 Do not place social-platform API credentials in the Obsidian vault. See [SECURITY.md](SECURITY.md) for the credential boundary.
