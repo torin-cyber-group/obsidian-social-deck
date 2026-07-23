@@ -45,7 +45,7 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 
 <a id="current-status"></a>
 <details>
-<summary><h3>Current status</h3></summary>
+<summary><strong>Current status</strong></summary>
 
 The sidebar includes a composer where you can paste post text directly and
 publish. Platform enablement lives in plugin settings, and character counts live
@@ -64,7 +64,7 @@ yet.
 ## Architecture
 
 <details>
-<summary><h3>Requirements</h3></summary>
+<summary><strong>Requirements</strong></summary>
 
 1. Obsidian
 2. A self-hosted [n8n instance](https://docs.n8n.io/deploy/host-n8n)
@@ -73,7 +73,7 @@ yet.
 
 <a id="flow-chart"></a>
 <details>
-<summary><h3>Flow Chart</h3></summary>
+<summary><strong>Flow Chart</strong></summary>
 
 Social Deck provides an Obsidian sidebar composer for text posts. The plugin
 sends approved posts to an authenticated n8n webhook. n8n stores platform
@@ -105,7 +105,7 @@ flowchart LR
 ## Basic setup
 
 <details>
-<summary><h3>Obsidian</h3></summary>
+<summary><strong>Obsidian</strong></summary>
 
 1. Download the latest release.
 2. Unzip
@@ -114,7 +114,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><h3>n8n</h3></summary>
+<summary><strong>n8n</strong></summary>
 
 1. Import and configure the router and platform sub-workflows from the [n8n setup guide](n8n/README.md).
 
@@ -124,7 +124,7 @@ flowchart LR
 
 <a id="bluesky-credentials"></a>
 <details>
-<summary><h3>Bluesky credentials</h3></summary>
+<summary><strong>Bluesky credentials</strong></summary>
 
 The text-posting workflow does not require a Bluesky developer account, API key or client secret. It uses:
 
@@ -174,7 +174,7 @@ The current self-hosted workflow uses an app password for a single account.
 
 <a id="linkedin-credentials"></a>
 <details>
-<summary><h3>LinkedIn credentials</h3></summary>
+<summary><strong>LinkedIn credentials</strong></summary>
 
 LinkedIn publishing uses an OAuth2 credential in n8n and a LinkedIn author URN
 in Obsidian settings. The credential stays in n8n; Obsidian only stores the
