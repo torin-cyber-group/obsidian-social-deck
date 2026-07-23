@@ -4,24 +4,52 @@ This directory will contain importable n8n workflow JSON files and setup guidanc
 
 The Obsidian plugin will send approved post content to one authenticated n8n webhook. n8n will own social-network credentials, scheduling, retries and platform API calls. Credentials must never be committed to this repository or returned to the Obsidian vault.
 
-## Bluesky text posting
+## Social post publishing
 
-Import [`workflows/bluesky-text-post.json`](workflows/bluesky-text-post.json) into n8n.
+Import [`workflows/social-post-publisher.json`](workflows/social-post-publisher.json) into n8n.
 
-### 1. Configure n8n environment variables
+The workflow accepts `platforms.bluesky`, `platforms.x` and
+`platforms.linkedin` in the Social Deck webhook payload. A platform is skipped
+when its key is absent from the payload.
 
-Add these variables to the n8n container or service, then restart n8n:
+### 1. Configure the Bluesky credential
 
-```text
-BLUESKY_HANDLE=your-handle.bsky.social
-BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+Use a dedicated Bluesky app password, not the account's primary password. Do not
+put the handle or app password into the workflow JSON.
+
+1. In n8n, create a new **HTTP Request** credential.
+2. Select **Custom Auth** as the generic credential type.
+3. Name it `Bluesky app password`.
+4. Set the credential JSON to:
+
+```json
+{
+  "body": {
+    "identifier": "your-handle.bsky.social",
+    "password": "xxxx-xxxx-xxxx-xxxx"
+  }
+}
 ```
 
-Use a dedicated Bluesky app password, not the account's primary password. Do not put either value into the workflow JSON.
+5. Open the imported **Create Bluesky session** HTTP Request node.
+6. In **Authentication**, select **Generic Credential Type**.
+7. In **Generic Auth Type**, select **Custom Auth**.
+8. Select the `Bluesky app password` credential.
 
-If n8n has `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`, the HTTP Request node expressions cannot read these variables. Set it to `false` for this workflow or replace the expressions with another secret-management approach appropriate to your n8n deployment.
+### 2. Configure X and LinkedIn credentials
 
-### 2. Secure the webhook
+The X and LinkedIn nodes are included but only run when their platform payloads
+are present.
+
+For X, open **Create X post** and select an OAuth2 credential with permission to
+create posts for the target account.
+
+For LinkedIn, open **Create LinkedIn post** and select an OAuth2 credential with
+permission to create UGC posts. The workflow expects
+`platforms.linkedin.authorUrn` in the payload, or you must replace the placeholder
+`urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID` in the **Validate request** node.
+
+### 3. Secure the webhook
 
 1. Create an n8n **Header Auth** credential.
 2. Set the header name to `Authorization`.
@@ -31,10 +59,11 @@ If n8n has `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`, the HTTP Request node expression
 
 Enter the same random secret—without the `Bearer ` prefix—in Social Deck's **n8n webhook secret** setting.
 
-### 3. Configure Social Deck
+### 4. Configure Social Deck
 
 Copy the production URL from the webhook node into Social Deck's **n8n webhook URL** setting. It normally ends with `/webhook/social-deck`.
 
 Open a note with Bluesky enabled and no more than 300 characters in its Bluesky preview. Select **Publish to Bluesky**. A successful response is written to `social-published-urls.bluesky` in the note frontmatter.
 
-This first workflow supports English text-only posts. It does not yet create rich link facets, upload images or publish threads.
+This first workflow supports text-only posts. It does not yet create rich link
+facets, upload images or publish threads.
