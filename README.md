@@ -34,6 +34,7 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 - [Social Media Credentials](#social-media-credentials)
 - [Bluesky credentials](#bluesky-credentials)
 - [LinkedIn credentials](#linkedin-credentials)
+- [Flow Chart](#flow-chart)
 - [Connect Obsidian to n8n](#connect-obsidian-to-n8n)
 
 ## Planned platforms
@@ -70,6 +71,7 @@ yet.
 
 </details>
 
+<a id="flow-chart"></a>
 <details>
 <summary><h3>Flow Chart</h3></summary>
 
