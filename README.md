@@ -59,6 +59,12 @@ For local testing, copy or link `main.js`, `manifest.json` and `styles.css` into
 
 Reload Obsidian, enable **Social Deck** under Community plugins, then select **Open Social Deck** from the command palette or ribbon.
 
+### Development builds
+
+Every successful GitHub Actions build on `main` produces an installable `social-deck.zip` artifact. See [Installing a development build](docs/installing-development-builds.md) for Windows and Obsidian instructions.
+
+Tags matching `v*` also create a GitHub release containing the installable ZIP.
+
 ## Security
 
 Do not place social-platform API credentials in the Obsidian vault. See [SECURITY.md](SECURITY.md) for the credential boundary.
