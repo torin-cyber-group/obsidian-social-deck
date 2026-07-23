@@ -1,0 +1,477 @@
+{
+  "name": "Social Deck - social post publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-deck",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0288e134-d45b-497a-a0ca-199173098c10",
+      "name": "Social Deck webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "social-deck"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nif (blueskyText !== undefined) {\n  enabled.bluesky = { enabled: true, text: blueskyText };\n} else {\n  enabled.bluesky = { enabled: false };\n}\n\nconst xText = parseText('x', 280);\nif (xText !== undefined) {\n  enabled.x = {\n    enabled: true,\n    text: xText,\n    username: typeof platforms.x?.username === 'string' ? platforms.x.username.trim().replace(/^@/, '') : undefined\n  };\n} else {\n  enabled.x = { enabled: false };\n}\n\nconst linkedinText = parseText('linkedin', 3000);\nif (linkedinText !== undefined) {\n  enabled.linkedin = {\n    enabled: true,\n    text: linkedinText,\n    authorUrn: typeof platforms.linkedin?.authorUrn === 'string' && platforms.linkedin.authorUrn.trim()\n      ? platforms.linkedin.authorUrn.trim()\n      : 'urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID'\n  };\n} else {\n  enabled.linkedin = { enabled: false };\n}\n\nif (!enabled.bluesky.enabled && !enabled.x.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  results: []\n} }];"
+      },
+      "id": "a6b6b8be-158a-45a5-a855-312dc0e93f87",
+      "name": "Validate request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f08b6dd2-30fd-47e1-ac6d-5ed6dfc9b47b",
+              "leftValue": "={{ $json.platforms.bluesky.enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8bfce3d6-4a40-4fdb-974b-b774109214fa",
+      "name": "If Bluesky enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "cebe500a-7fcf-4778-a669-b9f30b0b1367",
+      "name": "Create Bluesky session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -180
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "REPLACE_WITH_N8N_BLUESKY_CREDENTIAL_ID",
+          "name": "Bluesky app password"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.accessJwt }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ repo: $json.did, collection: 'app.bsky.feed.post', record: { '$type': 'app.bsky.feed.post', text: $('Validate request').first().json.platforms.bluesky.text, createdAt: $now.toUTC().toISO(), langs: ['en'] } }) }}",
+        "options": {}
+      },
+      "id": "051d55fc-63e1-4db8-8932-063a1f0465e4",
+      "name": "Create Bluesky post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('If Bluesky enabled').first().json;\nconst session = $('Create Bluesky session').first().json;\nconst post = $json;\nconst rkey = typeof post.uri === 'string' ? post.uri.split('/').pop() : undefined;\nconst result = {\n  ok: true,\n  platform: 'bluesky',\n  uri: post.uri,\n  cid: post.cid,\n  url: session.handle && rkey ? 'https://bsky.app/profile/' + session.handle + '/post/' + rkey : undefined\n};\nreturn [{ json: { ...previous, results: [...(previous.results ?? []), result] } }];"
+      },
+      "id": "0b8ac8be-7403-4379-bcde-7e12d6b2a9cc",
+      "name": "Record Bluesky result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2170cc6-0b20-4021-bfed-76f489ad4f0c",
+              "leftValue": "={{ $json.platforms.x.enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cf0ebf91-3195-4193-8070-60391813fcd3",
+      "name": "If X enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.x.com/2/tweets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ text: $('Validate request').first().json.platforms.x.text }) }}",
+        "options": {}
+      },
+      "id": "021c7ce9-df56-4d30-8903-e904d44139bf",
+      "name": "Create X post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        -180
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "REPLACE_WITH_N8N_X_OAUTH2_CREDENTIAL_ID",
+          "name": "X OAuth2 user context"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('If X enabled').first().json;\nconst response = $json;\nconst tweet = response.data ?? response;\nconst username = previous.platforms.x.username;\nconst id = tweet.id;\nconst result = {\n  ok: true,\n  platform: 'x',\n  id,\n  text: tweet.text,\n  url: id ? (username ? 'https://x.com/' + username + '/status/' + id : 'https://x.com/i/web/status/' + id) : undefined\n};\nreturn [{ json: { ...previous, results: [...(previous.results ?? []), result] } }];"
+      },
+      "id": "59f8264f-a9a9-4c8d-a7f6-4680e49dba21",
+      "name": "Record X result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fb8c5eb6-b100-4f3a-a081-396d24a999f5",
+              "leftValue": "={{ $json.platforms.linkedin.enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3eb1d380-74b1-4faa-b26e-ee03f9ea27a6",
+      "name": "If LinkedIn enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ author: $('Validate request').first().json.platforms.linkedin.authorUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { attributes: [], text: $('Validate request').first().json.platforms.linkedin.text }, shareMediaCategory: 'NONE' } }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "0214d48c-09db-47b6-8fd7-43d6b88c6628",
+      "name": "Create LinkedIn post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        -180
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "REPLACE_WITH_N8N_LINKEDIN_OAUTH2_CREDENTIAL_ID",
+          "name": "LinkedIn OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('If LinkedIn enabled').first().json;\nconst response = $json;\nconst headers = response.headers ?? {};\nconst body = response.body ?? response;\nconst id = headers['x-restli-id'] ?? headers['X-RestLi-Id'] ?? body.id;\nconst result = {\n  ok: true,\n  platform: 'linkedin',\n  id,\n  authorUrn: previous.platforms.linkedin.authorUrn\n};\nreturn [{ json: { ...previous, results: [...(previous.results ?? []), result] } }];"
+      },
+      "id": "a64bff6a-c43b-4cfd-87d5-02513f267e74",
+      "name": "Record LinkedIn result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.results.length === 1 ? $json.results[0] : { ok: true, results: $json.results } }}",
+        "options": {}
+      },
+      "id": "fb2e0888-8376-4e57-9d57-11149bd09d5a",
+      "name": "Return published posts",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2880,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Social Deck webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate request": {
+      "main": [
+        [
+          {
+            "node": "If Bluesky enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Bluesky enabled": {
+      "main": [
+        [
+          {
+            "node": "Create Bluesky session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If X enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bluesky session": {
+      "main": [
+        [
+          {
+            "node": "Create Bluesky post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bluesky post": {
+      "main": [
+        [
+          {
+            "node": "Record Bluesky result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Bluesky result": {
+      "main": [
+        [
+          {
+            "node": "If X enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If X enabled": {
+      "main": [
+        [
+          {
+            "node": "Create X post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If LinkedIn enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create X post": {
+      "main": [
+        [
+          {
+            "node": "Record X result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record X result": {
+      "main": [
+        [
+          {
+            "node": "If LinkedIn enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If LinkedIn enabled": {
+      "main": [
+        [
+          {
+            "node": "Create LinkedIn post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return published posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create LinkedIn post": {
+      "main": [
+        [
+          {
+            "node": "Record LinkedIn result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record LinkedIn result": {
+      "main": [
+        [
+          {
+            "node": "Return published posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e11c03a8-8f27-4c95-975d-7bb03be0164f",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

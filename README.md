@@ -16,7 +16,11 @@ Obsidian remains the source of truth for content and publication status. The plu
 
 The plugin can read the active Markdown note, parse its `social-*` frontmatter and show separate editable previews for X, Bluesky and LinkedIn. Each platform can be enabled or disabled from the sidebar; the selection is saved to the note's `social-platforms` frontmatter. Each preview has a live platform-specific character count and over-limit warning. Preview edits remain in memory and are not written back to the note yet.
 
-Text-only Bluesky publishing is available through the included n8n workflow. Bluesky credentials remain in n8n, and the resulting public post URL is written back to the note. X and LinkedIn publishing, images, rich links and threads are not implemented yet.
+Text-only Bluesky publishing is available from the plugin today. The included n8n
+workflow has conditional branches for Bluesky, X and LinkedIn, and only publishes
+platforms present in the Social Deck webhook payload. The plugin currently sends
+Bluesky posts only; X and LinkedIn plugin publishing, images, rich links and
+threads are not implemented yet.
 
 ## Bluesky credentials
 
@@ -42,16 +46,24 @@ If the password is lost or exposed, delete it from the same App Passwords page a
 
 ### Add the credentials to n8n
 
-Add the handle and app password as environment variables on the n8n container or service:
+Import [`n8n/workflows/social-post-publisher.json`](n8n/workflows/social-post-publisher.json).
+In n8n, create an **HTTP Request → Custom Auth** credential named
+`Bluesky app password` with this JSON:
 
-```text
-BLUESKY_HANDLE=example.bsky.social
-BLUESKY_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+```json
+{
+  "body": {
+    "identifier": "example.bsky.social",
+    "password": "xxxx-xxxx-xxxx-xxxx"
+  }
+}
 ```
 
-Restart n8n after adding or changing the variables. Do not place these values in the workflow JSON, Obsidian settings, Markdown frontmatter or this repository.
+Open the imported **Create Bluesky session** node and select that credential. Do
+not place the handle or app password in Obsidian settings, Markdown frontmatter or
+this repository.
 
-Import [`n8n/workflows/bluesky-text-post.json`](n8n/workflows/bluesky-text-post.json), then follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
+Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
 
 The current self-hosted workflow uses an app password for a single account. A future multi-user or hosted Social Deck service should use [AT Protocol OAuth](https://docs.bsky.app/blog/oauth-atproto) instead.
 
