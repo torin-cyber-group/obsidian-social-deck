@@ -80,11 +80,18 @@ In Obsidian:
 
 1. Open **Settings → Community plugins → Social Deck**.
 2. Paste the n8n production webhook URL into **n8n webhook URL**.
-3. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
+3. If testing from n8n's **Listening for test event** screen, paste the test URL
+   ending in `/webhook-test/social-deck` into **n8n test webhook URL**.
+4. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
    containing the random secret.
-4. Open a Markdown note with `bluesky` in `social-platforms`.
-5. Open **Social Deck** from the command palette or ribbon.
-6. Select **Publish to Bluesky**.
+5. Select **Test connection**.
+6. Open **Social Deck** from the command palette or ribbon.
+7. Paste text into **Quick post**.
+8. Leave **Bluesky** enabled and select **Publish to Bluesky**.
+
+The **Test connection** button uses **n8n test webhook URL** when it is set, and
+falls back to **n8n webhook URL** when it is blank. Publishing always uses
+**n8n webhook URL**.
 
 The plugin sends this request shape to n8n:
 
@@ -93,14 +100,39 @@ The plugin sends this request shape to n8n:
   "schemaVersion": 1,
   "requestedAt": "2026-07-23T00:00:00.000Z",
   "source": {
-    "fileName": "example-post",
-    "filePath": "examples/example-post.md"
+    "fileName": "Quick post",
+    "filePath": "social-deck"
   },
   "platforms": {
     "bluesky": {
       "text": "Post text from the Social Deck preview"
     }
   }
+}
+```
+
+The **Test connection** button sends this lighter request shape:
+
+```json
+{
+  "schemaVersion": 1,
+  "requestedAt": "2026-07-23T00:00:00.000Z",
+  "source": {
+    "fileName": "Connection test",
+    "filePath": "social-deck"
+  },
+  "testConnection": true
+}
+```
+
+The workflow returns:
+
+```json
+{
+  "ok": true,
+  "type": "connection-test",
+  "source": "n8n",
+  "receivedAt": "2026-07-23T00:00:00.000Z"
 }
 ```
 
@@ -125,8 +157,26 @@ curl -X POST "https://n8n.example.com/webhook/social-deck" \
   }'
 ```
 
-A successful Obsidian publish writes the returned Bluesky URL to
-`social-published-urls.bluesky` in the note frontmatter.
+A successful Obsidian publish shows a notice and opens the returned Bluesky URL.
+
+### Troubleshooting
+
+If Obsidian shows `Unexpected token '<'` or says n8n returned HTML instead of
+JSON, the webhook URL is returning a web page instead of the workflow response.
+The most common causes are:
+
+- Social Deck is using the test webhook URL instead of the production URL.
+- The n8n workflow is not active.
+- The test URL is configured, but n8n is not currently showing **Listening for
+  test event**.
+- The webhook URL points to the n8n editor, login page or another proxy page.
+- The **Social Deck webhook** node is missing the Header Auth credential.
+- The Header Auth name or value does not match Obsidian. The header name must be
+  `X-Social-Deck-Secret`, and the value must be the same random secret selected
+  in Social Deck's **n8n webhook secret** setting.
+
+Run the `curl` smoke test above against the exact URL configured in Obsidian. A
+working webhook returns JSON, not HTML.
 
 This first workflow supports text-only posts. It does not yet create rich link
 facets, upload images or publish threads.

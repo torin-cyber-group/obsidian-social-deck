@@ -10,11 +10,14 @@ Social Deck is an Obsidian plugin for composing, previewing, scheduling and publ
 
 ## Architecture
 
-Obsidian remains the source of truth for content and publication status. The plugin sends approved posts to an authenticated n8n webhook. n8n stores platform credentials and handles scheduling, retries and publishing. Publication results and public post URLs are written back to the originating note.
+Social Deck provides an Obsidian sidebar composer for text posts. The plugin
+sends approved posts to an authenticated n8n webhook. n8n stores platform
+credentials and handles scheduling, retries and publishing.
 
 ## Current status
 
-The plugin can read the active Markdown note, parse its `social-*` frontmatter and show separate editable previews for X, Bluesky and LinkedIn. Each platform can be enabled or disabled from the sidebar; the selection is saved to the note's `social-platforms` frontmatter. Each preview has a live platform-specific character count and over-limit warning. Preview edits remain in memory and are not written back to the note yet.
+The sidebar includes a composer where you can paste post text directly and
+publish. Platform checkboxes and character counts live in the sidebar.
 
 Text-only Bluesky publishing is available from the plugin today. The included n8n
 workflow has conditional branches for Bluesky, X and LinkedIn, and only publishes
@@ -60,8 +63,8 @@ In n8n, create an **HTTP Request → Custom Auth** credential named
 ```
 
 Open the imported **Create Bluesky session** node and select that credential. Do
-not place the handle or app password in Obsidian settings, Markdown frontmatter or
-this repository.
+not place the handle or app password in Obsidian settings, Markdown notes or this
+repository.
 
 Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/README.md).
 
@@ -81,11 +84,19 @@ After importing and configuring the n8n workflow:
    normally ends with `/webhook/social-deck`.
 6. In Obsidian, open **Settings → Community plugins → Social Deck**.
 7. Paste the production URL into **n8n webhook URL**.
-8. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
+8. If testing from n8n's **Listening for test event** screen, paste the test URL
+   ending in `/webhook-test/social-deck` into **n8n test webhook URL**.
+9. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
    containing the same random secret.
+10. Select **Test connection** to confirm Obsidian can reach n8n before
+   publishing.
 
 Use the production webhook URL, not the test URL. n8n only accepts production
 webhook requests while the workflow is active.
+
+The **Test connection** button uses **n8n test webhook URL** when it is set, and
+falls back to **n8n webhook URL** when it is blank. Publishing always uses
+**n8n webhook URL**.
 
 Social Deck stores the webhook URL and selected secret ID in Obsidian plugin
 data. The webhook secret value is stored through Obsidian SecretStorage rather
@@ -101,26 +112,6 @@ To create one on Linux or macOS:
 
 ```bash
 openssl rand -base64 32
-```
-
-### Post frontmatter
-
-```yaml
----
-social-status: draft
-social-platforms:
-  - x
-  - bluesky
-  - linkedin
-social-accounts:
-  x: torin-x
-  bluesky: torin-bluesky
-  linkedin: torin-linkedin
-social-scheduled-at:
-social-media:
-  - "[[incident-preparedness.png]]"
-social-published-urls: {}
----
 ```
 
 ## Development

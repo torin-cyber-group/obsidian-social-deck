@@ -37,4 +37,5 @@ To update an existing development installation, replace the same three files and
 
 ## Test with the example note
 
-Copy [`examples/example-post.md`](../examples/example-post.md) into the vault and open it. Social Deck should display X, Bluesky and LinkedIn previews with separate character counts.
+Open Social Deck from the command palette or ribbon. Paste text into the sidebar
+composer; Social Deck should display platform controls and a character count.
