@@ -67,6 +67,26 @@ Follow the remaining webhook-security instructions in the [n8n setup guide](n8n/
 
 The current self-hosted workflow uses an app password for a single account. A future multi-user or hosted Social Deck service should use [AT Protocol OAuth](https://docs.bsky.app/blog/oauth-atproto) instead.
 
+## Connect Obsidian to n8n
+
+After importing and configuring the n8n workflow:
+
+1. In n8n, create a **Header Auth** credential for the **Social Deck webhook**
+   node.
+2. Set the header name to `Authorization`.
+3. Set the credential value to `Bearer ` followed by a long random secret, for
+   example `Bearer replace-with-a-long-random-value`.
+4. Save and activate the workflow.
+5. Copy the production webhook URL from the **Social Deck webhook** node. It
+   normally ends with `/webhook/social-deck`.
+6. In Obsidian, open **Settings → Community plugins → Social Deck**.
+7. Paste the production URL into **n8n webhook URL**.
+8. Paste only the random secret into **n8n webhook secret**. Do not include the
+   `Bearer ` prefix; the plugin adds it when sending the request.
+
+Use the production webhook URL, not the test URL. n8n only accepts production
+webhook requests while the workflow is active.
+
 ### Post frontmatter
 
 ```yaml

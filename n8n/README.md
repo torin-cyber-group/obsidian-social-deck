@@ -61,9 +61,58 @@ Enter the same random secret—without the `Bearer ` prefix—in Social Deck's *
 
 ### 4. Configure Social Deck
 
-Copy the production URL from the webhook node into Social Deck's **n8n webhook URL** setting. It normally ends with `/webhook/social-deck`.
+Copy the production URL from the webhook node into Social Deck's **n8n webhook URL** setting. It normally ends with `/webhook/social-deck`. Use the production URL, not the test URL, and make sure the workflow is active.
 
-Open a note with Bluesky enabled and no more than 300 characters in its Bluesky preview. Select **Publish to Bluesky**. A successful response is written to `social-published-urls.bluesky` in the note frontmatter.
+In Obsidian:
+
+1. Open **Settings → Community plugins → Social Deck**.
+2. Paste the n8n production webhook URL into **n8n webhook URL**.
+3. Paste the random secret into **n8n webhook secret** without the `Bearer ` prefix.
+4. Open a Markdown note with `bluesky` in `social-platforms`.
+5. Open **Social Deck** from the command palette or ribbon.
+6. Select **Publish to Bluesky**.
+
+The plugin sends this request shape to n8n:
+
+```json
+{
+  "schemaVersion": 1,
+  "requestedAt": "2026-07-23T00:00:00.000Z",
+  "source": {
+    "fileName": "example-post",
+    "filePath": "examples/example-post.md"
+  },
+  "platforms": {
+    "bluesky": {
+      "text": "Post text from the Social Deck preview"
+    }
+  }
+}
+```
+
+You can smoke-test the n8n side before using Obsidian:
+
+```bash
+curl -X POST "https://n8n.example.com/webhook/social-deck" \
+  -H "Authorization: Bearer replace-with-a-long-random-value" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schemaVersion": 1,
+    "requestedAt": "2026-07-23T00:00:00.000Z",
+    "source": {
+      "fileName": "manual-test",
+      "filePath": "manual-test.md"
+    },
+    "platforms": {
+      "bluesky": {
+        "text": "Manual Social Deck n8n connection test"
+      }
+    }
+  }'
+```
+
+A successful Obsidian publish writes the returned Bluesky URL to
+`social-published-urls.bluesky` in the note frontmatter.
 
 This first workflow supports text-only posts. It does not yet create rich link
 facets, upload images or publish threads.
