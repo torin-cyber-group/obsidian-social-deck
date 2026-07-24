@@ -118,6 +118,10 @@ flowchart LR
 1. Download the latest release.
 2. Unzip
 3. In your vault folder, add the files to `\.obsidian\plugins\social-deck`
+4. In Settings > Community plugins > Installed plugins make sure its enabled.
+5. Click on settings
+
+   ![Plugin Settings Page](docs/images/plugin_settings.png)
 
 </details>
 
