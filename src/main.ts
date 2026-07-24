@@ -7,6 +7,7 @@ import {
   type N8nConnectionTestResult,
   type SocialPublishResult
 } from "./services/publish-service";
+import type { SocialPlatform } from "./types/social";
 import { SOCIAL_DECK_VIEW_TYPE, SocialDeckView } from "./views/social-deck-view";
 
 export default class SocialDeckPlugin extends Plugin {
@@ -17,7 +18,7 @@ export default class SocialDeckPlugin extends Plugin {
 
     addIcon(RAVEN_ICON, RAVEN_ICON_SVG);
     this.registerView(SOCIAL_DECK_VIEW_TYPE, (leaf) => new SocialDeckView(leaf, this));
-    this.addRibbonIcon(RAVEN_ICON, "Open Social Deck", () => this.activateView());
+    this.addRibbonIcon(RAVEN_ICON, "Toggle Social Deck", () => this.toggleView());
     this.addCommand({
       id: "open-social-deck",
       name: "Open Social Deck",
@@ -41,9 +42,7 @@ export default class SocialDeckPlugin extends Plugin {
       enabledPlatforms: {
         ...DEFAULT_SETTINGS.enabledPlatforms,
         ...savedSettings.enabledPlatforms
-      },
-      linkedinAuthorUrn: savedSettings.linkedinAuthorUrn,
-      accountLabel: savedSettings.accountLabel
+      }
     };
   }
 
@@ -52,14 +51,12 @@ export default class SocialDeckPlugin extends Plugin {
     await this.refreshViews();
   }
 
-  async publishSocialText(text: string): Promise<SocialPublishResult[]> {
+  async publishSocialText(text: string, platforms: SocialPlatform[]): Promise<SocialPublishResult[]> {
     return publishSocialPost(this.settings.webhookUrl, this.getWebhookSecret(), {
       text,
       platforms: {
-        bluesky: this.settings.enabledPlatforms.bluesky,
-        linkedin: this.settings.enabledPlatforms.linkedin
-          ? { authorUrn: this.settings.linkedinAuthorUrn }
-          : undefined
+        bluesky: platforms.includes("bluesky"),
+        linkedin: platforms.includes("linkedin")
       }
     });
   }
@@ -94,6 +91,16 @@ export default class SocialDeckPlugin extends Plugin {
 
     await this.app.workspace.revealLeaf(leaf);
     await this.refreshViews();
+  }
+
+  private async toggleView(): Promise<void> {
+    const leaves = this.app.workspace.getLeavesOfType(SOCIAL_DECK_VIEW_TYPE);
+    if (leaves.length > 0) {
+      await Promise.all(leaves.map((leaf) => leaf.detach()));
+      return;
+    }
+
+    await this.activateView();
   }
 
   private async refreshViews(): Promise<void> {

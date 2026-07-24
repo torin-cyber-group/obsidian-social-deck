@@ -1,6 +1,6 @@
 {
   "name": "obsidian-social-deck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Compose, preview, schedule and publish social posts from Obsidian through n8n.",
   "main": "main.js",
   "scripts": {
@@ -20,4 +20,3 @@
     "typescript": "^5.7.2"
   }
 }
-

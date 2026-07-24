@@ -93,6 +93,33 @@
   border-color: var(--text-error);
 }
 
+.social-deck__platform-selector {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  margin: 0 0 var(--size-4-3);
+}
+
+.social-deck__platform-selector > span,
+.social-deck__platform-selector small {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.social-deck__platform-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+}
+
+.social-deck__platform-option {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--font-ui-smaller);
+  gap: var(--size-2-2);
+}
+
 .social-deck__platform-footer {
   color: var(--text-muted);
   min-height: var(--input-height);

@@ -8,8 +8,6 @@ export interface SocialDeckSettings {
   webhookTestUrl: string;
   webhookSecretId: string;
   enabledPlatforms: Record<SocialPlatform, boolean>;
-  linkedinAuthorUrn: string;
-  accountLabel: string;
 }
 
 export const DEFAULT_SETTINGS: SocialDeckSettings = {
@@ -20,9 +18,7 @@ export const DEFAULT_SETTINGS: SocialDeckSettings = {
     x: false,
     bluesky: true,
     linkedin: false
-  },
-  linkedinAuthorUrn: "",
-  accountLabel: "Default"
+  }
 };
 
 export class SocialDeckSettingTab extends PluginSettingTab {
@@ -116,27 +112,5 @@ export class SocialDeckSettingTab extends PluginSettingTab {
         );
     }
 
-    new Setting(containerEl)
-      .setName("LinkedIn author URN")
-      .setDesc("The LinkedIn author to publish as, for example urn:li:person:abc123 or urn:li:organization:123456.")
-      .addText((text) =>
-        text
-          .setPlaceholder("urn:li:person:...")
-          .setValue(this.plugin.settings.linkedinAuthorUrn)
-          .onChange(async (value) => {
-            this.plugin.settings.linkedinAuthorUrn = value.trim();
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Default account label")
-      .setDesc("A display label only. Social network credentials remain in n8n.")
-      .addText((text) =>
-        text.setValue(this.plugin.settings.accountLabel).onChange(async (value) => {
-          this.plugin.settings.accountLabel = value.trim() || "Default";
-          await this.plugin.saveSettings();
-        })
-      );
   }
 }

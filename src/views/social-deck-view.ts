@@ -16,6 +16,8 @@ interface PublishFeedback {
 export class SocialDeckView extends ItemView {
   private postText = "";
   private publishFeedback: PublishFeedback[] = [];
+  private selectedPlatforms = new Set<SocialPlatform>();
+  private availablePlatformsSnapshot = "";
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: SocialDeckPlugin) {
     super(leaf);
@@ -49,6 +51,9 @@ export class SocialDeckView extends ItemView {
 
   private renderComposer(container: Element): void {
     const section = container.createDiv({ cls: "social-deck__composer" });
+    const availablePlatforms = this.getEnabledPublishPlatforms();
+    this.syncSelectedPlatforms(availablePlatforms);
+
     const header = section.createDiv({ cls: "social-deck__platform-header" });
     const identity = header.createDiv();
     identity.createEl("strong", { text: "Quick post" });
@@ -73,6 +78,10 @@ export class SocialDeckView extends ItemView {
     textarea.lang = navigator.language || "en";
     textarea.value = this.postText;
 
+    const selector = section.createDiv({ cls: "social-deck__platform-selector" });
+    selector.createEl("span", { text: "Publish to" });
+    const selectorOptions = selector.createDiv({ cls: "social-deck__platform-options" });
+
     const footer = section.createDiv({ cls: "social-deck__platform-footer" });
     const footerStatus = footer.createEl("small");
     const actions = footer.createDiv({ cls: "social-deck__platform-actions" });
@@ -83,19 +92,19 @@ export class SocialDeckView extends ItemView {
     });
 
     const updateCount = (): void => {
-      const enabledPlatforms = this.getEnabledPublishPlatforms();
-      const characterLimit = this.getCharacterLimit(enabledPlatforms);
+      const selectedPlatforms = this.getSelectedPublishPlatforms();
+      const characterLimit = this.getCharacterLimit(selectedPlatforms);
       const length = [...textarea.value].length;
       const overLimit = length > characterLimit;
       const missingConfiguration =
         !this.plugin.settings.webhookUrl || !this.plugin.getWebhookSecret();
-      const missingLinkedInAuthor =
-        this.plugin.settings.enabledPlatforms.linkedin && !this.plugin.settings.linkedinAuthorUrn;
-      const platformNames = enabledPlatforms.map((platform) => PLATFORM_DEFINITIONS[platform].name);
+      const platformNames = selectedPlatforms.map((platform) => PLATFORM_DEFINITIONS[platform].name);
       footerStatus.textContent =
-        platformNames.length > 0
+        availablePlatforms.length === 0
+          ? "Enable a platform in Social Deck settings to publish"
+          : platformNames.length > 0
           ? `Text-only publishing to ${platformNames.join(" and ")} is available`
-          : "Enable a platform in Social Deck settings to publish";
+          : "Select at least one platform for this post";
       count.textContent = `${length.toLocaleString()} / ${characterLimit.toLocaleString()}`;
       count.toggleClass("social-deck__character-count--over", overLimit);
       textarea.toggleClass("social-deck__editor--over", overLimit);
@@ -105,18 +114,44 @@ export class SocialDeckView extends ItemView {
         length === 0 ||
         overLimit ||
         missingConfiguration ||
-        missingLinkedInAuthor ||
-        enabledPlatforms.length === 0;
+        selectedPlatforms.length === 0;
       publishButton.title = missingConfiguration
         ? "Configure the n8n webhook URL and SecretStorage entry in Social Deck settings"
-        : missingLinkedInAuthor
-          ? "Configure the LinkedIn author URN in Social Deck settings"
-          : enabledPlatforms.length === 0
-          ? "Enable a platform in Social Deck settings"
+        : selectedPlatforms.length === 0
+          ? availablePlatforms.length === 0
+            ? "Enable a platform in Social Deck settings"
+            : "Select at least one platform for this post"
           : overLimit
             ? `Enabled platform posts must be ${characterLimit} characters or fewer`
             : "Publish this text";
     };
+
+    if (availablePlatforms.length === 0) {
+      selectorOptions.createEl("small", { text: "No enabled platforms" });
+    }
+
+    for (const platform of availablePlatforms) {
+      const definition = PLATFORM_DEFINITIONS[platform];
+      const option = selectorOptions.createEl("label", {
+        cls: "social-deck__platform-option"
+      });
+      const checkbox = option.createEl("input", {
+        attr: {
+          type: "checkbox",
+          value: platform
+        }
+      });
+      checkbox.checked = this.selectedPlatforms.has(platform);
+      option.createSpan({ text: definition.name });
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          this.selectedPlatforms.add(platform);
+        } else {
+          this.selectedPlatforms.delete(platform);
+        }
+        updateCount();
+      });
+    }
 
     textarea.addEventListener("input", () => {
       this.postText = textarea.value;
@@ -134,7 +169,7 @@ export class SocialDeckView extends ItemView {
       publishButton.textContent = "Publishing...";
       textarea.disabled = true;
       try {
-        const results = await this.plugin.publishSocialText(textarea.value);
+        const results = await this.plugin.publishSocialText(textarea.value, this.getSelectedPublishPlatforms());
         this.publishFeedback = results.map((result) => ({
           platformName: PLATFORM_DEFINITIONS[result.platform].name,
           publishedAt: new Date().toLocaleString(),
@@ -185,6 +220,28 @@ export class SocialDeckView extends ItemView {
     return (["bluesky", "linkedin"] as SocialPlatform[]).filter(
       (platform) => this.plugin.settings.enabledPlatforms[platform]
     );
+  }
+
+  private getSelectedPublishPlatforms(): SocialPlatform[] {
+    return this.getEnabledPublishPlatforms().filter((platform) => this.selectedPlatforms.has(platform));
+  }
+
+  private syncSelectedPlatforms(availablePlatforms: SocialPlatform[]): void {
+    const available = new Set(availablePlatforms);
+    const snapshot = availablePlatforms.join(",");
+    const availableChanged = snapshot !== this.availablePlatformsSnapshot;
+    this.availablePlatformsSnapshot = snapshot;
+
+    for (const platform of [...this.selectedPlatforms]) {
+      if (!available.has(platform)) {
+        this.selectedPlatforms.delete(platform);
+      }
+    }
+    if (availableChanged || this.selectedPlatforms.size === 0) {
+      for (const platform of availablePlatforms) {
+        this.selectedPlatforms.add(platform);
+      }
+    }
   }
 
   private getCharacterLimit(platforms: SocialPlatform[]): number {

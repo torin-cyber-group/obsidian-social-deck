@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    route: 'connection-test',\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nenabled.bluesky = blueskyText === undefined\n  ? { enabled: false }\n  : { enabled: true, text: blueskyText };\n\nconst linkedinText = parseText('linkedin', 3000);\nif (linkedinText === undefined) {\n  enabled.linkedin = { enabled: false };\n} else {\n  const authorUrn = typeof platforms.linkedin?.authorUrn === 'string'\n    ? platforms.linkedin.authorUrn.trim()\n    : '';\n  if (!/^urn:li:(person|organization):/.test(authorUrn)) {\n    throw new Error('LinkedIn authorUrn must be a person or organization URN');\n  }\n  enabled.linkedin = {\n    enabled: true,\n    text: linkedinText,\n    authorUrn\n  };\n}\n\nif (!enabled.bluesky.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  route: 'publish',\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  results: []\n} }];"
+        "jsCode": "const body = $json.body ?? {};\nconst platforms = body.platforms ?? {};\nconst enabled = {};\n\nif (body.schemaVersion !== 1) {\n  throw new Error('Unsupported Social Deck schema version');\n}\n\nif (body.testConnection === true) {\n  return [{ json: {\n    route: 'connection-test',\n    response: {\n      ok: true,\n      type: 'connection-test',\n      source: 'n8n',\n      receivedAt: new Date().toISOString()\n    }\n  } }];\n}\n\nfunction parseText(platform, limit) {\n  const value = platforms[platform]?.text;\n  if (value === undefined || value === null) {\n    return undefined;\n  }\n  if (typeof value !== 'string' || value.trim().length === 0) {\n    throw new Error(platform + ' text is required');\n  }\n  if ([...value].length > limit) {\n    throw new Error(platform + ' text exceeds ' + limit + ' characters');\n  }\n  return value;\n}\n\nconst blueskyText = parseText('bluesky', 300);\nenabled.bluesky = blueskyText === undefined\n  ? { enabled: false }\n  : { enabled: true, text: blueskyText };\n\nconst linkedinText = parseText('linkedin', 3000);\nenabled.linkedin = linkedinText === undefined\n  ? { enabled: false }\n  : { enabled: true, text: linkedinText };\n\nif (!enabled.bluesky.enabled && !enabled.linkedin.enabled) {\n  throw new Error('No supported Social Deck platforms were enabled');\n}\n\nreturn [{ json: {\n  route: 'publish',\n  source: body.source ?? {},\n  requestedAt: body.requestedAt ?? null,\n  platforms: enabled,\n  bluesky: enabled.bluesky.enabled ? { text: enabled.bluesky.text } : undefined,\n  linkedin: enabled.linkedin.enabled ? { text: enabled.linkedin.text } : undefined,\n  results: []\n} }];"
       },
       "id": "18797a7f-350b-4738-afaf-a0fe25d11d7c",
       "name": "Route request",
@@ -127,11 +127,12 @@
       "position": [
         960,
         0
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If Bluesky enabled').first().json;\nconst result = unwrap($json);\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
+        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If Bluesky enabled').first().json;\nconst result = unwrap($json);\nif (!result || result.platform !== 'bluesky') {\n  throw new Error('Bluesky workflow did not return a Bluesky result');\n}\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
       },
       "id": "367071a1-8796-45b8-b971-786112e86630",
       "name": "Record Bluesky result",
@@ -189,11 +190,12 @@
       "position": [
         1680,
         0
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If LinkedIn enabled').first().json;\nconst result = unwrap($json);\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
+        "jsCode": "function unwrap(value) {\n  if (Array.isArray(value)) {\n    return unwrap(value[0]);\n  }\n  if (value && typeof value === 'object') {\n    return value.json ?? value.data ?? value.result ?? value;\n  }\n  return value;\n}\n\nconst previous = $('If LinkedIn enabled').first().json;\nconst result = unwrap($json);\nif (!result || result.platform !== 'linkedin') {\n  throw new Error('LinkedIn workflow did not return a LinkedIn result');\n}\nreturn [{ json: {\n  ...previous,\n  results: [...(previous.results ?? []), result]\n} }];"
       },
       "id": "cf29c922-6c7f-43b2-91cc-0b2c984eceaa",
       "name": "Record LinkedIn result",

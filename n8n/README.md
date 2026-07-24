@@ -29,6 +29,9 @@ The LinkedIn sub-workflow owns LinkedIn OAuth2 credentials, creates a text post
 with the current LinkedIn Posts API and returns the LinkedIn post ID to the
 router.
 
+Each platform sub-workflow must keep its **When executed by another workflow**
+trigger node. The router uses that trigger when it calls the sub-workflow.
+
 ### 1. Configure the Bluesky credential
 
 Use a dedicated Bluesky app password, not the account's primary password. Do not
@@ -56,22 +59,24 @@ put the handle or app password into the workflow JSON.
 
 ### 2. Configure the LinkedIn credential
 
-LinkedIn publishing uses the versioned Posts API:
+LinkedIn publishing uses n8n's native **LinkedIn** node:
 
-- Endpoint: `POST https://api.linkedin.com/rest/posts`
-- Required headers in the workflow: `X-Restli-Protocol-Version: 2.0.0` and
-  `Linkedin-Version: 202605`
-- Author format: `urn:li:person:{id}` or `urn:li:organization:{id}`
+- Node: **LinkedIn**
+- Resource: **Post**
+- Operation: **Create**
 
 In n8n:
 
-1. Create or select a LinkedIn OAuth2 credential with permission to create posts
-   for the target member or organisation.
+1. Create or select a LinkedIn Community Management OAuth2 credential with
+   permission to create posts for the target member or organisation.
 2. Open **Create LinkedIn post** in **Social Deck - LinkedIn publisher
    sub-workflow**.
-3. In **Authentication**, select **Generic Credential Type**.
-4. In **Generic Auth Type**, select **OAuth2 API**.
-5. Select the LinkedIn OAuth2 credential.
+3. In **Authentication**, select **Community Management**.
+4. Select the LinkedIn Community Management OAuth2 credential.
+5. Keep **Resource** set to **Post** and **Operation** set to **Create**.
+6. Set **Post As** to either **Person** or **Organization**.
+7. Select the target person or organisation in the node. Do not use an
+   expression for this field.
 
 ### 3. Connect the router to the platform sub-workflows
 
@@ -132,12 +137,11 @@ In Obsidian:
    ending in `/webhook-test/social-deck` into **n8n test webhook URL**.
 4. In **n8n webhook secret**, create or select an Obsidian SecretStorage entry
    containing the random secret.
-5. If publishing to LinkedIn, enter **LinkedIn author URN**.
-6. Enable **Bluesky**, **LinkedIn** or both under **Enabled platforms**.
-7. Select **Test connection**.
-8. Open **Social Deck** from the command palette or ribbon.
-9. Paste text into **Quick post**.
-10. Select **Publish**.
+5. Enable **Bluesky**, **LinkedIn** or both under **Enabled platforms**.
+6. Select **Test connection**.
+7. Open **Social Deck** from the command palette or ribbon.
+8. Paste text into **Quick post**.
+9. Select **Publish**.
 
 The **Test connection** button uses **n8n test webhook URL** when it is set, and
 falls back to **n8n webhook URL** when it is blank. Publishing always uses
@@ -158,8 +162,7 @@ The plugin sends this request shape to n8n:
       "text": "Post text from the Social Deck preview"
     },
     "linkedin": {
-      "text": "Post text from the Social Deck preview",
-      "authorUrn": "urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID"
+      "text": "Post text from the Social Deck preview"
     }
   }
 }
@@ -208,8 +211,7 @@ curl -X POST "https://n8n.example.com/webhook/social-deck" \
         "text": "Manual Social Deck n8n connection test"
       },
       "linkedin": {
-        "text": "Manual Social Deck n8n connection test",
-        "authorUrn": "urn:li:person:REPLACE_WITH_LINKEDIN_PERSON_ID"
+        "text": "Manual Social Deck n8n connection test"
       }
     }
   }'
@@ -239,9 +241,9 @@ The most common causes are:
 - **Create Bluesky session** in the Bluesky sub-workflow is missing the
   `Bluesky app password` credential.
 - **Create LinkedIn post** in the LinkedIn sub-workflow is missing the LinkedIn
-  OAuth2 credential.
-- LinkedIn is enabled in Obsidian, but **LinkedIn author URN** is blank or does
-  not start with `urn:li:person:` or `urn:li:organization:`.
+  Community Management OAuth2 credential.
+- **Create LinkedIn post** does not have **Post As** and the target person or
+  organisation selected in n8n.
 - Another workflow is active on the same `/social-deck` webhook path as the
   router.
 - The Header Auth name or value does not match Obsidian. The header name must be

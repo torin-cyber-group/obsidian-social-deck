@@ -6,9 +6,7 @@ export interface SocialPublishRequest {
   text: string;
   platforms: {
     bluesky?: boolean;
-    linkedin?: {
-      authorUrn: string;
-    };
+    linkedin?: boolean;
   };
 }
 
@@ -24,7 +22,6 @@ export interface LinkedInPublishResult {
   ok: true;
   platform: "linkedin";
   id: string;
-  authorUrn: string;
   url?: string;
 }
 
@@ -57,8 +54,7 @@ export async function publishSocialPost(
   }
   if (request.platforms.linkedin) {
     platforms.linkedin = {
-      text: request.text,
-      authorUrn: request.platforms.linkedin.authorUrn
+      text: request.text
     };
   }
 
@@ -82,6 +78,18 @@ export async function publishSocialPost(
   if (results.length === 0) {
     console.error("Social Deck n8n returned unexpected publish payload", responseJson);
     throw new Error("n8n returned an unexpected JSON response");
+  }
+
+  const missingPlatforms = getExpectedPlatforms(request).filter(
+    (platform) => !results.some((result) => result.platform === platform)
+  );
+  if (missingPlatforms.length > 0) {
+    console.error("Social Deck n8n returned partial publish payload", {
+      expectedPlatforms: getExpectedPlatforms(request),
+      missingPlatforms,
+      responseJson
+    });
+    throw new Error(`n8n did not return a ${formatPlatformList(missingPlatforms)} publish result`);
   }
 
   return results;
@@ -178,7 +186,6 @@ function isLinkedInResult(value: unknown): value is LinkedInPublishResult {
     result.ok === true &&
     result.platform === "linkedin" &&
     typeof result.id === "string" &&
-    typeof result.authorUrn === "string" &&
     (result.url === undefined || typeof result.url === "string")
   );
 }
@@ -203,6 +210,23 @@ function extractPublishResults(value: unknown): SocialPublishResult[] {
     ...extractPublishResults(record.result),
     ...extractPublishResults(record.results)
   ];
+}
+
+function getExpectedPlatforms(request: SocialPublishRequest): Array<SocialPublishResult["platform"]> {
+  const platforms: Array<SocialPublishResult["platform"]> = [];
+  if (request.platforms.bluesky) {
+    platforms.push("bluesky");
+  }
+  if (request.platforms.linkedin) {
+    platforms.push("linkedin");
+  }
+  return platforms;
+}
+
+function formatPlatformList(platforms: Array<SocialPublishResult["platform"]>): string {
+  return platforms
+    .map((platform) => (platform === "bluesky" ? "Bluesky" : "LinkedIn"))
+    .join(" and ");
 }
 
 function isConnectionTestResult(value: unknown): value is N8nConnectionTestResult {

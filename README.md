@@ -194,15 +194,18 @@ The current self-hosted workflow uses an app password for a single account.
 <details>
 <summary>Show details</summary>
 
-LinkedIn publishing uses an OAuth2 credential in n8n and a LinkedIn author URN
-in Obsidian settings. The credential stays in n8n; Obsidian only stores the
-author target, such as `urn:li:person:abc123` or
-`urn:li:organization:123456`.
+LinkedIn publishing uses an OAuth2 credential and native LinkedIn post node in
+n8n. The LinkedIn person or organisation target is selected directly on the n8n
+node, not stored in Obsidian.
+
+>> TO DO
+>> Add in the link and some details around the LinkedIn process for setting up a developer account and company etc
 
 Import [`n8n/workflows/linkedin-publisher-subworkflow.json`](n8n/workflows/linkedin-publisher-subworkflow.json)
 and select the LinkedIn OAuth2 credential on the **Create LinkedIn post** node.
-Then enter the matching author URN in Social Deck settings and enable LinkedIn
-under **Enabled platforms**.
+Set **Post As** to either **Person** or **Organization**, then choose the target
+person or organisation in n8n. In Obsidian, only enable LinkedIn under
+**Enabled platforms**.
 
 Follow the full [n8n setup guide](n8n/README.md) for router wiring and webhook
 security.
